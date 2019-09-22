@@ -26,7 +26,7 @@ struct CDNSSeedData {
 
 /**
  * CChainParams defines various tweakable parameters of a given instance of the
- * PIVX system. There are three: the main network on which people trade goods
+ * Simplicity system. There are three: the main network on which people trade goods
  * and services, the public test network which gets reset from time to time and
  * a regression test mode which is intended for private networks only. It has
  * minimal difficulty to ensure that blocks can be found instantly.
@@ -129,8 +129,8 @@ public:
     /** Height or Time Based Activations **/
     int ModifierUpgradeBlock() const { return nModifierUpdateBlock; }
     int LAST_POW_BLOCK() const { return nLastPOWBlock; }
-    int PivxBadBlockTime() const { return nPivxBadBlockTime; }
-    int PivxBadBlocknBits() const { return nPivxBadBlocknBits; }
+    int SimplicityBadBlockTime() const { return nSimplicityBadBlockTime; }
+    int SimplicityBadBlocknBits() const { return nSimplicityBadBlocknBits; }
     int Zerocoin_StartHeight() const { return nZerocoinStartHeight; }
     int Zerocoin_Block_EnforceSerialRange() const { return nBlockEnforceSerialRange; }
     int Zerocoin_Block_RecalculateAccumulators() const { return nBlockRecalculateAccumulators; }
@@ -166,8 +166,8 @@ protected:
     int nToCheckBlockUpgradeMajority;
     int64_t nTargetSpacing;
     int nLastPOWBlock;
-    int64_t nPivxBadBlockTime;
-    unsigned int nPivxBadBlocknBits;
+    int64_t nSimplicityBadBlockTime;
+    unsigned int nSimplicityBadBlocknBits;
     int nMasternodeCountDrift;
     int nMaturity;
     int nStakeMinDepth;

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(PIVX)
+project(Simplicity)
 
 set(BDB_VER "4.8.30")
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/contrib/cmake")
@@ -97,8 +97,8 @@ else()
     )
 endif()
 
-# run configure if pivx_config.h doesn't exist
-if (EXISTS	"${CMAKE_CURRENT_SOURCE_DIR}/src/config/pivx-config.h")
+# run configure if simplicity_config.h doesn't exist
+if (EXISTS	"${CMAKE_CURRENT_SOURCE_DIR}/src/config/simplicity-config.h")
 else()
     execute_process(
             COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/configure ${BDB_CONFIGURE_FLAGS} ${BIGNUM_CONFIGURE_FLAGS}
@@ -144,7 +144,7 @@ include_directories(
 )
 
 set(libleveldb_a_headers
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/config/pivx-config.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/config/simplicity-config.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/port/atomic_pointer.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/port/port_example.h
         ${CMAKE_CURRENT_SOURCE_DIR}/src/leveldb/port/port_posix.h
@@ -325,7 +325,7 @@ set(SERVER_SOURCES
         ./src/txdb.cpp
         ./src/txmempool.cpp
         ./src/validationinterface.cpp
-        ./src/zpivchain.cpp
+        ./src/zsplchain.cpp
         )
 add_library(SERVER_A STATIC ${BitcoinHeaders} ${SERVER_SOURCES})
 
@@ -353,21 +353,21 @@ set(WALLET_SOURCES
         ./src/masternode-sync.cpp
         ./src/masternodeconfig.cpp
         ./src/masternodeman.cpp
-        ./src/zpiv/mintpool.cpp
+        ./src/zspl/mintpool.cpp
         ./src/wallet/rpcdump.cpp
-        ./src/zpiv/deterministicmint.cpp
-        ./src/zpiv/zerocoin.cpp
+        ./src/zspl/deterministicmint.cpp
+        ./src/zspl/zerocoin.cpp
         ./src/wallet/rpcwallet.cpp
         ./src/kernel.cpp
         ./src/wallet/wallet.cpp
         ./src/wallet/wallet_ismine.cpp
         ./src/wallet/walletdb.cpp
-        ./src/zpiv/zpivwallet.cpp
-        ./src/zpiv/zpivtracker.cpp
-        ./src/zpiv/zpivmodule.cpp
+        ./src/zspl/zsplwallet.cpp
+        ./src/zspl/zspltracker.cpp
+        ./src/zspl/zsplmodule.cpp
         ./src/stakeinput.cpp
         ./src/genwit.cpp
-        ./src/lightzpivthread.cpp
+        ./src/lightzsplthread.cpp
         )
 add_library(WALLET_A STATIC ${BitcoinHeaders} ${WALLET_SOURCES})
 
@@ -438,10 +438,10 @@ endif()
 add_library(ZEROCOIN_A STATIC ${ZEROCOIN_SOURCES})
 
 set(COMMON_SOURCES
-        ./src/zpiv/accumulators.cpp
-        ./src/zpiv/accumulatorcheckpoints.cpp
-        ./src/zpiv/accumulatormap.cpp
-        ./src/zpiv/witness.cpp
+        ./src/zspl/accumulators.cpp
+        ./src/zspl/accumulatorcheckpoints.cpp
+        ./src/zspl/accumulatormap.cpp
+        ./src/zspl/witness.cpp
         ./src/allocators.cpp
         ./src/amount.cpp
         ./src/base58.cpp
@@ -450,9 +450,9 @@ set(COMMON_SOURCES
         ./src/coins.cpp
         ./src/compressor.cpp
         ./src/primitives/block.cpp
-        ./src/zpiv/deterministicmint.cpp
+        ./src/zspl/deterministicmint.cpp
         ./src/primitives/transaction.cpp
-        ./src/zpiv/zerocoin.cpp
+        ./src/zspl/zerocoin.cpp
         ./src/core_read.cpp
         ./src/core_write.cpp
         ./src/hash.cpp
@@ -495,9 +495,9 @@ add_library(UTIL_A STATIC ${BitcoinHeaders} ${UTIL_SOURCES})
 set(CLI_SOURCES ./src/rpc/client.cpp)
 add_library(CLI_A STATIC ${BitcoinHeaders} ${CLI_SOURCES})
 
-add_executable(pivx-cli ${CMAKE_CURRENT_SOURCE_DIR}/src/pivx-cli.cpp)
-add_dependencies(pivx-cli libunivalue)
-target_link_libraries(pivx-cli
+add_executable(simplicity-cli ${CMAKE_CURRENT_SOURCE_DIR}/src/simplicity-cli.cpp)
+add_dependencies(simplicity-cli libunivalue)
+target_link_libraries(simplicity-cli
         CLI_A
         univalue
         UTIL_A
@@ -505,9 +505,9 @@ target_link_libraries(pivx-cli
         ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${LIBEVENT_LIB}
         )
 
-add_executable(pivx-tx ${CMAKE_CURRENT_SOURCE_DIR}/src/pivx-tx.cpp)
-add_dependencies(pivx-tx libunivalue libsecp256k1)
-target_link_libraries(pivx-tx
+add_executable(simplicity-tx ${CMAKE_CURRENT_SOURCE_DIR}/src/simplicity-tx.cpp)
+add_dependencies(simplicity-tx libunivalue libsecp256k1)
+target_link_libraries(simplicity-tx
         univalue
         COMMON_A
         ZEROCOIN_A
@@ -517,12 +517,12 @@ target_link_libraries(pivx-tx
         ${Boost_LIBRARIES} ${OPENSSL_LIBRARIES} ${LIBEVENT_LIB}
         )
 if(GMP_FOUND)
-    target_link_libraries(pivx-tx ${GMP_LIBRARY})
+    target_link_libraries(simplicity-tx ${GMP_LIBRARY})
 endif()
 
-add_executable(pivxd ${CMAKE_CURRENT_SOURCE_DIR}/src/pivxd.cpp)
-add_dependencies(pivxd libunivalue libsecp256k1 leveldb leveldb_sse42 memenv)
-target_link_libraries(pivxd
+add_executable(simplicityd ${CMAKE_CURRENT_SOURCE_DIR}/src/simplicityd.cpp)
+add_dependencies(simplicityd libunivalue libsecp256k1 leveldb leveldb_sse42 memenv)
+target_link_libraries(simplicityd
         SERVER_A
         COMMON_A
         univalue
@@ -534,10 +534,10 @@ target_link_libraries(pivxd
         ${BerkeleyDB_LIBRARIES} ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES} ${LIBEVENT_LIB} miniupnpc pthread
         )
 if(GMP_FOUND)
-    target_link_libraries(pivxd ${GMP_LIBRARY})
+    target_link_libraries(simplicityd ${GMP_LIBRARY})
 endif()
 if(ZMQ_FOUND)
-    target_link_libraries(pivxd ZMQ_A ${ZMQ_LIB})
+    target_link_libraries(simplicityd ZMQ_A ${ZMQ_LIB})
 endif ()
 
 
