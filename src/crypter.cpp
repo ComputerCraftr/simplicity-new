@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2013 The Bitcoin developers
 // Copyright (c) 2017-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -10,6 +11,7 @@
 #include "util.h"
 #include "init.h"
 #include "uint256.h"
+#include "hash.h"
 
 #include <openssl/aes.h>
 #include <openssl/evp.h>
@@ -21,9 +23,17 @@ bool CCrypter::SetKeyFromPassphrase(const SecureString& strKeyData, const std::v
         return false;
 
     int i = 0;
-    if (nDerivationMethod == 0)
-        i = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), &chSalt[0],
-            (unsigned char*)&strKeyData[0], strKeyData.size(), nRounds, chKey, chIV);
+    if (nDerivationMethod == 0) {
+        i = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), &chSalt[0], (unsigned char*)&strKeyData[0], strKeyData.size(), nRounds, chKey, chIV);
+    }
+
+    if (nDerivationMethod == 1) {
+        // Passphrase conversion
+        uint256 scryptHash = scrypt_salted_multiround_hash((const void*)strKeyData.c_str(), strKeyData.size(), &chSalt[0], 8, nRounds);
+
+        i = EVP_BytesToKey(EVP_aes_256_cbc(), EVP_sha512(), &chSalt[0], (unsigned char *)&scryptHash, sizeof scryptHash, nRounds, chKey, chIV);
+        memory_cleanse(&scryptHash, sizeof scryptHash);
+    }
 
     if (i != (int)WALLET_CRYPTO_KEY_SIZE) {
         memory_cleanse(chKey, sizeof(chKey));

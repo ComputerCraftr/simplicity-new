@@ -21,7 +21,7 @@ std::list<uint256> listAccCheckpointsNoDB;
 uint32_t ParseChecksum(uint256 nChecksum, libzerocoin::CoinDenomination denomination)
 {
     //shift to the beginning bit of this denomination and trim any remaining bits by returning 32 bits only
-    int pos = distance(libzerocoin::zerocoinDenomList.begin(), find(libzerocoin::zerocoinDenomList.begin(), libzerocoin::zerocoinDenomList.end(), denomination));
+    int pos = std::distance(libzerocoin::zerocoinDenomList.begin(), find(libzerocoin::zerocoinDenomList.begin(), libzerocoin::zerocoinDenomList.end(), denomination));
     nChecksum = nChecksum >> (32*((libzerocoin::zerocoinDenomList.size() - 1) - pos));
     return nChecksum.Get32();
 }
@@ -503,7 +503,7 @@ int SearchMintHeightOf(CBigNum value){
 
 void AccumulateRange(CoinWitnessData* coinWitness, int nHeightEnd)
 {
-    bool fDoubleCounted = false;
+    // bool fDoubleCounted = false;
     int64_t nTimeStart = GetTimeMicros();
     int nHeightStart = std::max(coinWitness->nHeightAccStart, coinWitness->nHeightAccEnd + 1);
     CBlockIndex* pindex = chainActive[nHeightStart];
@@ -514,11 +514,11 @@ void AccumulateRange(CoinWitnessData* coinWitness, int nHeightEnd)
         coinWitness->nHeightAccEnd = pindex->nHeight;
 
         // 10 blocks were accumulated twice when zSPL v2 was activated
-        if (pindex->nHeight == Params().Zerocoin_Block_Double_Accumulated() + 10 && !fDoubleCounted) {
-            pindex = chainActive[Params().Zerocoin_Block_Double_Accumulated()];
-            fDoubleCounted = true;
-            continue;
-        }
+        // if (pindex->nHeight == Params().Zerocoin_Block_Double_Accumulated() + 10 && !fDoubleCounted) {
+            // pindex = chainActive[Params().Zerocoin_Block_Double_Accumulated()];
+            // fDoubleCounted = true;
+            // continue;
+        // }
 
         pindex = chainActive.Next(pindex);
     }
@@ -612,7 +612,7 @@ bool calculateAccumulatedBlocksFor(
         std::list<CBigNum>& ret,
         std::string& strError
 ){
-    bool fDoubleCounted = false;
+    // bool fDoubleCounted = false;
     int nMintsAdded = 0;
     while (pindex) {
 
@@ -634,11 +634,11 @@ bool calculateAccumulatedBlocksFor(
         nMintsAdded += AddBlockMintsToAccumulator(den, filter, pindex, &witnessAccumulator, true, ret);
 
         // 10 blocks were accumulated twice when zSPL v2 was activated
-        if (pindex->nHeight == 1050010 && !fDoubleCounted) {
-            pindex = chainActive[1050000];
-            fDoubleCounted = true;
-            continue;
-        }
+        // if (pindex->nHeight == Params().Zerocoin_Block_Double_Accumulated() && !fDoubleCounted) {
+            // pindex = chainActive[Params().Zerocoin_Block_Double_Accumulated() - 10];
+            // fDoubleCounted = true;
+            // continue;
+        // }
 
         pindex = chainActive.Next(pindex);
     }
@@ -669,7 +669,7 @@ bool calculateAccumulatedBlocksFor(
 ){
 
     int amountOfScannedBlocks = 0;
-    bool fDoubleCounted = false;
+    // bool fDoubleCounted = false;
     int nMintsAdded = 0;
     while (pindex) {
 
@@ -692,11 +692,11 @@ bool calculateAccumulatedBlocksFor(
         nMintsAdded += AddBlockMintsToAccumulator(coin, nHeightMintAdded, pindex, &witnessAccumulator, true);
 
         // 10 blocks were accumulated twice when zSPL v2 was activated
-        if (pindex->nHeight == 1050010 && !fDoubleCounted) {
-            pindex = chainActive[1050000];
-            fDoubleCounted = true;
-            continue;
-        }
+        // if (pindex->nHeight == Params().Zerocoin_Block_Double_Accumulated() && !fDoubleCounted) {
+            // pindex = chainActive[Params().Zerocoin_Block_Double_Accumulated() - 10];
+            // fDoubleCounted = true;
+            // continue;
+        // }
 
         amountOfScannedBlocks++;
         pindex = chainActive.Next(pindex);

@@ -1,5 +1,6 @@
 // Copyright (c) 2014-2016 The Dash developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -12,7 +13,7 @@
 #include "spork.h"
 
 //
-// Bootup the Masternode, look for a 10000 Simplicity input and register on the network
+// Bootup the Masternode, look for a 200000 Simplicity input and register on the network
 //
 void CActiveMasternode::ManageStatus()
 {
@@ -68,12 +69,12 @@ void CActiveMasternode::ManageStatus()
         }
 
         // The service needs the correct default port to work properly
-        if(!CMasternodeBroadcast::CheckDefaultPort(strMasterNodeAddr, errorMessage, "CActiveMasternode::ManageStatus()"))
+        if (!CMasternodeBroadcast::CheckDefaultPort(strMasterNodeAddr, errorMessage, "CActiveMasternode::ManageStatus()"))
             return;
 
         LogPrintf("CActiveMasternode::ManageStatus() - Checking inbound connection to '%s'\n", service.ToString());
 
-        CNode* pnode = ConnectNode((CAddress)service, NULL, false);
+        CNode* pnode = ConnectNode((CAddress)service, NULL, (strMasterNodeAddr.empty() ? false : true));
         if (!pnode) {
             notCapableReason = "Could not connect to " + service.ToString();
             LogPrintf("CActiveMasternode::ManageStatus() - not capable: %s\n", notCapableReason);
@@ -265,7 +266,7 @@ bool CActiveMasternode::CreateBroadcast(std::string strService, std::string strK
     CService service = CService(strService);
 
     // The service needs the correct default port to work properly
-    if(!CMasternodeBroadcast::CheckDefaultPort(strService, errorMessage, "CActiveMasternode::CreateBroadcast()"))
+    if (!CMasternodeBroadcast::CheckDefaultPort(strService, errorMessage, "CActiveMasternode::CreateBroadcast()"))
         return false;
 
     addrman.Add(CAddress(service), CNetAddr("127.0.0.1"), 2 * 60 * 60);
@@ -275,8 +276,16 @@ bool CActiveMasternode::CreateBroadcast(std::string strService, std::string strK
 
 bool CActiveMasternode::CreateBroadcast(CTxIn vin, CService service, CKey keyCollateralAddress, CPubKey pubKeyCollateralAddress, CKey keyMasternode, CPubKey pubKeyMasternode, std::string& errorMessage, CMasternodeBroadcast &mnb)
 {
-	// wait for reindex and/or import to finish
-	if (fImporting || fReindex) return false;
+    // wait for reindex and/or import to finish
+    if (fImporting || fReindex) return false;
+
+    auto mnode = mnodeman.Find(service);
+
+    if (mnode && mnode->vin != vin) {
+        errorMessage = strprintf("Duplicate Masternode address: %s", service.ToString());
+        LogPrintf("CActiveMasternode::CreateBroadcast() -  %s\n", errorMessage);
+        return false;
+    }
 
     CMasternodePing mnp(vin);
     if (!mnp.Sign(keyMasternode, pubKeyMasternode)) {
@@ -343,15 +352,15 @@ bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secr
 
 bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secretKey, std::string strTxHash, std::string strOutputIndex)
 {
-	// wait for reindex and/or import to finish
-	if (fImporting || fReindex) return false;
+    // wait for reindex and/or import to finish
+    if (fImporting || fReindex) return false;
 
     // Find possible candidates
     TRY_LOCK(pwalletMain->cs_wallet, fWallet);
     if (!fWallet) return false;
 
     std::vector<COutput> possibleCoins = SelectCoinsMasternode();
-    COutput* selectedOutput;
+    COutput* selectedOutput = nullptr;
 
     // Find the vin
     if (!strTxHash.empty()) {
@@ -365,25 +374,37 @@ bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secr
             return false;
         }
 
-        bool found = false;
         for (COutput& out : possibleCoins) {
-            if (out.tx->GetHash() == txHash && out.i == outputIndex) {
-                selectedOutput = &out;
-                found = true;
-                break;
-            }
+            if (out.tx->GetHash() != txHash || out.i != outputIndex)
+                continue;
+
+            if (!CMasternode::Level(out.tx->vout[out.i].nValue, chainActive.Height()))
+                continue;
+
+            selectedOutput = &out;
+            break;
         }
-        if (!found) {
+
+        if (!selectedOutput) {
             LogPrintf("CActiveMasternode::GetMasterNodeVin - Could not locate valid vin\n");
             return false;
         }
     } else {
-        // No output specified,  Select the first one
-        if (possibleCoins.size() > 0) {
-            selectedOutput = &possibleCoins[0];
-        } else {
+        // No output specified, select the first one with highest level
+        if (!possibleCoins.size()) {
             LogPrintf("CActiveMasternode::GetMasterNodeVin - Could not locate specified vin from possible list\n");
             return false;
+        }
+
+        selectedOutput = &possibleCoins[0];
+        auto selected_level = CMasternode::Level(selectedOutput->tx->vout[selectedOutput->i].nValue, chainActive.Height());
+
+        for (auto& out : possibleCoins) {
+            if (selected_level == 3u)
+                break;
+
+            if (CMasternode::Level(out.tx->vout[out.i].nValue, chainActive.Height()) > selected_level)
+                selectedOutput = &out;
         }
     }
 
@@ -391,12 +412,11 @@ bool CActiveMasternode::GetMasterNodeVin(CTxIn& vin, CPubKey& pubkey, CKey& secr
     return GetVinFromOutput(*selectedOutput, vin, pubkey, secretKey);
 }
 
-
 // Extract Masternode vin information from output
 bool CActiveMasternode::GetVinFromOutput(COutput out, CTxIn& vin, CPubKey& pubkey, CKey& secretKey)
 {
-	// wait for reindex and/or import to finish
-	if (fImporting || fReindex) return false;
+    // wait for reindex and/or import to finish
+    if (fImporting || fReindex) return false;
 
     CScript pubScript;
 
@@ -436,7 +456,7 @@ std::vector<COutput> CActiveMasternode::SelectCoinsMasternode()
             mnTxHash.SetHex(mne.getTxHash());
 
             int nIndex;
-            if(!mne.castOutputIndex(nIndex))
+            if (!mne.castOutputIndex(nIndex))
                 continue;
 
             COutPoint outpoint = COutPoint(mnTxHash, nIndex);
@@ -456,7 +476,7 @@ std::vector<COutput> CActiveMasternode::SelectCoinsMasternode()
 
     // Filter
     for (const COutput& out : vCoins) {
-        if (out.tx->vout[out.i].nValue == 10000 * COIN) { //exactly
+        if (CMasternode::IsDepositCoins(out.tx->vout[out.i].nValue)) {
             filteredCoins.push_back(out);
         }
     }
