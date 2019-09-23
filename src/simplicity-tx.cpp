@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -189,7 +190,7 @@ static void MutateTxAddInput(CMutableTransaction& tx, const std::string& strInpu
     uint256 txid(strTxid);
 
     static const unsigned int minTxOutSz = 9;
-    unsigned int nMaxSize = MAX_BLOCK_SIZE_LEGACY;
+    unsigned int nMaxSize = MAX_BLOCK_SIZE_CURRENT;
     static const unsigned int maxVout = nMaxSize / minTxOutSz;
 
     // extract and validate vout

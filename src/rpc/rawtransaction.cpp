@@ -2,6 +2,7 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -223,7 +224,7 @@ UniValue listunspent(const UniValue& params, bool fHelp)
             "      \"address\"   (string) simplicity address\n"
             "      ,...\n"
             "    ]\n"
-            "4. watchonlyconfig  (numeric, optional, default=1) 1 = list regular unspent transactions, 2 = list only watchonly transactions,  3 = list all unspent transactions (including watchonly)\n"
+            "4. watchonlyconfig  (numeric, optional, default=3) 1 = list regular unspent transactions, 2 = list only watchonly transactions,  3 = list all unspent transactions (including watchonly)\n"
 
             "\nResult\n"
             "[                   (array of json object)\n"
@@ -268,7 +269,7 @@ UniValue listunspent(const UniValue& params, bool fHelp)
         }
     }
 
-    int nWatchonlyConfig = 1;
+    int nWatchonlyConfig = 3;
     if(params.size() > 3) {
         nWatchonlyConfig = params[3].get_int();
         if (nWatchonlyConfig > 3 || nWatchonlyConfig < 1)
