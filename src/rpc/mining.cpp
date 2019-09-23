@@ -2,6 +2,7 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -150,7 +151,7 @@ UniValue generate(const UniValue& params, bool fHelp)
     }
     unsigned int nExtraNonce = 0;
     UniValue blockHashes(UniValue::VARR);
-    bool fPoS = nHeight >= Params().LAST_POW_BLOCK();
+    bool fPoS = false; //nHeight >= Params().LAST_POW_BLOCK();
     while (nHeight < nHeightEnd)
     {
 
@@ -167,7 +168,7 @@ UniValue generate(const UniValue& params, bool fHelp)
                 IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
             }
         }
-        while (!CheckProofOfWork(pblock->GetHash(), pblock->nBits)) {
+        while (!CheckProofOfWork(pblock->GetPoWHash(), pblock->nBits)) {
             // Yes, there is a chance every nonce could fail to satisfy the -regtest
             // target -- 1 in 2^(2^32). That ain't gonna happen.
             ++pblock->nNonce;
@@ -176,7 +177,7 @@ UniValue generate(const UniValue& params, bool fHelp)
         if (!ProcessNewBlock(state, NULL, pblock))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
         ++nHeight;
-        fPoS = nHeight >= Params().LAST_POW_BLOCK();
+        // fPoS = nHeight >= Params().LAST_POW_BLOCK();
         blockHashes.push_back(pblock->GetHash().GetHex());
     }
     return blockHashes;
@@ -212,8 +213,8 @@ UniValue setgenerate(const UniValue& params, bool fHelp)
     if (params.size() > 0)
         fGenerate = params[0].get_bool();
 
-    if (fGenerate && (chainActive.Height() >= Params().LAST_POW_BLOCK()))
-        throw JSONRPCError(RPC_INVALID_REQUEST, "Proof of Work phase has already ended");
+    // if (fGenerate && (chainActive.Height() >= Params().LAST_POW_BLOCK()))
+        // throw JSONRPCError(RPC_INVALID_REQUEST, "Proof of Work phase has already ended");
 
     int nGenProcLimit = -1;
     if (params.size() > 1) {
@@ -463,7 +464,7 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     if (strMode != "template")
         throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid mode");
 
-    if (vNodes.empty())
+    if (Params().MiningRequiresPeers() && vNodes.empty())
         throw JSONRPCError(RPC_CLIENT_NOT_CONNECTED, "Simplicity is not connected!");
 
     if (IsInitialBlockDownload())
