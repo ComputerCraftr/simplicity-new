@@ -452,7 +452,7 @@ bool initStakeInput(const CBlock block, std::unique_ptr<CStakeInput>& stake, int
         //verify signature and script
         ScriptError serror = SCRIPT_ERR_OK;
         if (!VerifyScript(txin.scriptSig, txPrev.vout[txin.prevout.n].scriptPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, TransactionSignatureChecker(&tx, 0), &serror))
-            return error("CheckProofOfStake() : VerifySignature failed on coinstake %s, %s", tx.GetHash().ToString().c_str(), ScriptErrorString(serror));
+            return error("%s : VerifySignature failed on coinstake %s, %s", __func__, tx.GetHash().ToString().c_str(), ScriptErrorString(serror));
 
         CSplStake* splInput = new CSplStake();
         splInput->SetInput(txPrev, txin.prevout.n);

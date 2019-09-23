@@ -1,5 +1,6 @@
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -527,7 +528,7 @@ void CBudgetManager::CheckAndRemove()
 
 }
 
-void CBudgetManager::FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, bool fProofOfStake)
+void CBudgetManager::FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, bool fProofOfStake, CAmount& nBlockValue)
 {
     LOCK(cs);
 
@@ -553,8 +554,6 @@ void CBudgetManager::FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, b
         ++it;
     }
 
-    CAmount blockValue = GetBlockValue(pindexPrev->nHeight);
-
     if (fProofOfStake) {
         if (nHighestCount > 0) {
             unsigned int i = txNew.vout.size();
@@ -572,7 +571,7 @@ void CBudgetManager::FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, b
         }
     } else {
         //miners get the full amount on these blocks
-        txNew.vout[0].nValue = blockValue;
+        txNew.vout[0].nValue = nBlockValue;
 
         if (nHighestCount > 0) {
             txNew.vout.resize(2);
@@ -588,6 +587,52 @@ void CBudgetManager::FillBlockPayee(CMutableTransaction& txNew, CAmount nFees, b
             LogPrint("mnbudget","CBudgetManager::FillBlockPayee - Budget payment to %s for %lld\n", address2.ToString(), nAmount);
         }
     }
+}
+
+void CBudgetManager::FillTreasuryBlockPayee(CMutableTransaction& txNew, CAmount nFees, bool fProofOfStake, CAmount& nBlockValue)
+{
+    CBlockIndex* pindexPrev = chainActive.Tip();
+    if (!pindexPrev) return;
+
+    CScript payee;
+    int height = pindexPrev->nHeight + 1;
+
+    payee = Params().GetTreasuryRewardScriptAtHeight(height);
+    CAmount treasurePayment = GetTreasuryAward(height);
+
+
+    if (fProofOfStake) {
+        /**For Proof Of Stake vout[0] must be null
+         * Stake reward can be split into many different outputs, so we must
+         * use vout.size() to align with several different cases.
+         * An additional output is appended as the masternode payment
+         */
+        unsigned int i = txNew.vout.size();
+        txNew.vout.resize(i + 1);
+        txNew.vout[i].scriptPubKey = payee;
+        txNew.vout[i].nValue = treasurePayment;
+
+        // if (txNew.vout.size() == 4) { //here is a situation: if stake was split, subtraction from the last one may give us negative value, so we have split it
+            //subtract treasury payment from the stake reward
+            // txNew.vout[i - 1].nValue -= treasurePayment/2;
+            // txNew.vout[i - 2].nValue -= treasurePayment/2;
+        // } else {
+            //subtract treasury payment from the stake reward
+            // txNew.vout[i - 1].nValue -= treasurePayment;
+        // }
+    } else {
+        txNew.vout.resize(2);
+        txNew.vout[1].scriptPubKey = payee;
+        txNew.vout[1].nValue = treasurePayment;
+        //miners get the full amount on these blocks
+        txNew.vout[0].nValue = nBlockValue; //- treasurePayment;
+    }
+
+    CTxDestination address1;
+    ExtractDestination(payee, address1);
+    CBitcoinAddress address2(address1);
+
+    LogPrint("mnbudget","CBudgetManager::FillTreasuryBlockPayee - Treasury payment to %s for %lld\n", address2.ToString(), treasurePayment);
 }
 
 CFinalizedBudget* CBudgetManager::FindFinalizedBudget(uint256 nHash)
@@ -906,45 +951,13 @@ CAmount CBudgetManager::GetTotalBudget(int nHeight)
 {
     if (chainActive.Tip() == NULL) return 0;
 
-    if (Params().NetworkID() == CBaseChainParams::TESTNET) {
-        CAmount nSubsidy = 500 * COIN;
-        return ((nSubsidy / 100) * 10) * 146;
-    }
-
-    //get block value and calculate from that
     CAmount nSubsidy = 0;
-    if (nHeight <= Params().LAST_POW_BLOCK() && nHeight >= 151200) {
-        nSubsidy = 50 * COIN;
-    } else if (nHeight <= 302399 && nHeight > Params().LAST_POW_BLOCK()) {
-        nSubsidy = 50 * COIN;
-    } else if (nHeight <= 345599 && nHeight >= 302400) {
-        nSubsidy = 45 * COIN;
-    } else if (nHeight <= 388799 && nHeight >= 345600) {
-        nSubsidy = 40 * COIN;
-    } else if (nHeight <= 431999 && nHeight >= 388800) {
-        nSubsidy = 35 * COIN;
-    } else if (nHeight <= 475199 && nHeight >= 432000) {
-        nSubsidy = 30 * COIN;
-    } else if (nHeight <= 518399 && nHeight >= 475200) {
-        nSubsidy = 25 * COIN;
-    } else if (nHeight <= 561599 && nHeight >= 518400) {
-        nSubsidy = 20 * COIN;
-    } else if (nHeight <= 604799 && nHeight >= 561600) {
-        nSubsidy = 15 * COIN;
-    } else if (nHeight <= 647999 && nHeight >= 604800) {
-        nSubsidy = 10 * COIN;
-    } else if (nHeight >= Params().Zerocoin_Block_V2_Start()) {
-        nSubsidy = 10 * COIN;
-    } else {
-        nSubsidy = 5 * COIN;
+    int endHeight = nHeight + Params().GetBudgetCycleBlocks();
+    for (int height = nHeight; height < endHeight; height++) {
+        nSubsidy += GetBlockValue(height, false, 0);
     }
 
-    // Amount of blocks in a months period of time (using 1 minutes per) = (60*24*30)
-    if (nHeight <= 172800) {
-        return 648000 * COIN;
-    } else {
-        return ((nSubsidy / 100) * 10) * 1440 * 30;
-    }
+    return nSubsidy / 10; // 10% of PoW block reward
 }
 
 void CBudgetManager::NewBlock()

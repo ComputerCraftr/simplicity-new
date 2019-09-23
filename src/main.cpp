@@ -966,7 +966,7 @@ bool GetCoinAge(const CTransaction& tx, const unsigned int nTxTime, int nBestHei
     nCoinAge = 0;
 
     CBlockIndex* pindex = NULL;
-    BOOST_FOREACH (const CTxIn& txin, tx.vin) {
+    for (const CTxIn& txin : tx.vin) {
         // First try finding the previous transaction in database
         CTransaction txPrev;
         uint256 hashBlockPrev;
@@ -1313,7 +1313,7 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fReject
 
     } else {
         for (const CTxIn& txin : tx.vin)
-            if (txin.prevout.IsNull())
+            if (txin.prevout.IsNull() && !txin.IsZerocoinSpend())
                 return state.DoS(10, error("CheckTransaction() : prevout is null"),
                     REJECT_INVALID, "bad-txns-prevout-null");
     }
@@ -4242,7 +4242,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     bool fZerocoinActive = nHeight >= Params().Zerocoin_StartHeight();
     std::vector<CBigNum> vBlockSerials;
     // TODO: Check if this is ok... blockHeight is always the tip or should we look for the prevHash and get the height?
-    int blockHeight = chainActive.Height() + 1;
+    // int blockHeight = chainActive.Height() + 1;
     for (const CTransaction& tx : block.vtx) {
         if (!CheckTransaction(tx, fZerocoinActive, nHeight >= Params().Zerocoin_Block_EnforceSerialRange(), state))
             return error("%s : CheckTransaction failed", __func__);
@@ -4342,7 +4342,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
 
     // Version 20 header must be used after Params().Zerocoin_StartHeight(). And never before.
     if (nHeight >= Params().Zerocoin_StartHeight()) {
-        if (block.nVersion < Params().Zerocoin_HeaderVersion())
+        if (block.nVersion < Params().Zerocoin_HeaderVersion() && Params().NetworkID() != CBaseChainParams::REGTEST)
             return state.DoS(50, error("ContextualCheckBlockHeader() : block version must be at least %d after ZerocoinStartHeight", Params().Zerocoin_HeaderVersion()),
             REJECT_INVALID, "block-version");
     } else {
@@ -6294,7 +6294,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
 
         CBlockIndex *pindexLast = NULL;
 
-        BOOST_FOREACH(const CBlock& header, headers) {
+        for (const CBlock& header : headers) {
             CValidationState state;
             if (pindexLast != NULL && header.hashPrevBlock != pindexLast->GetBlockHash()) {
                 LOCK(cs_main);
