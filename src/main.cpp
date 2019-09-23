@@ -6287,7 +6287,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
 
         bool ret = true;
         bool bFirst = true;
-        string strError = "";
+        std::string strError = "";
 
         int nFirst = 0;
         int nLast = 0;
