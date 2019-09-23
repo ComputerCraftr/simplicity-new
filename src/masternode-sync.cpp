@@ -1,5 +1,6 @@
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -49,10 +50,10 @@ bool CMasternodeSync::IsBlockchainSynced()
     if (!lockMain) return false;
 
     CBlockIndex* pindex = chainActive.Tip();
-    if (pindex == NULL) return false;
+    if (!pindex) return false;
 
-
-    if (pindex->nTime + 60 * 60 < GetTime())
+    // if the last block is over 12 hours old, we are not synced
+    if (pindex->nTime + 12 * 60 * 60 < GetTime())
         return false;
 
     fBlockchainSynced = true;
@@ -366,7 +367,7 @@ void CMasternodeSync::Process()
 
         if (pnode->nVersion >= ActiveProtocol()) {
             if (RequestedMasternodeAssets == MASTERNODE_SYNC_BUDGET) {
-                
+
                 // We'll start rejecting votes if we accidentally get set as synced too soon
                 if (lastBudgetItem > 0 && lastBudgetItem < GetTime() - MASTERNODE_SYNC_TIMEOUT * 2 && RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD) { 
                     

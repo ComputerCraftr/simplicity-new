@@ -2,6 +2,7 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -19,6 +20,7 @@
 #include "primitives/transaction.h"
 #include "scheduler.h"
 #include "guiinterface.h"
+#include "spork.h"
 
 #ifdef WIN32
 #include <string.h>
@@ -80,7 +82,7 @@ static CNode* pnodeLocalHost = NULL;
 uint64_t nLocalHostNonce = 0;
 static std::vector<ListenSocket> vhListenSocket;
 CAddrMan addrman;
-int nMaxConnections = 125;
+int nMaxConnections = 256;
 bool fAddressesInitialized = false;
 std::string strSubVersion;
 
@@ -407,7 +409,7 @@ CNode* ConnectNode(CAddress addrConnect, const char* pszDest, bool obfuScationMa
         pszDest ? 0.0 : (double)(GetAdjustedTime() - addrConnect.nTime) / 3600.0);
 
     // Connect
-    SOCKET hSocket = INVALID_SOCKET;;
+    SOCKET hSocket = INVALID_SOCKET;
     bool proxyConnectionFailed = false;
     if (pszDest ? ConnectSocketByName(addrConnect, hSocket, pszDest, Params().GetDefaultPort(), nConnectTimeout, &proxyConnectionFailed) :
                   ConnectSocket(addrConnect, hSocket, nConnectTimeout, &proxyConnectionFailed)) {
@@ -1380,8 +1382,10 @@ void ThreadOpenConnections()
                 continue;
 
             // do not allow non-default ports, unless after 50 invalid addresses selected already
-            if (addr.GetPort() != Params().GetDefaultPort() && nTries < 50)
-                continue;
+            if (IsSporkActive(SPORK_19_ENFORCE_DEFAULT_MN_PORT)) {
+                if (addr.GetPort() != Params().GetDefaultPort() && nTries < 50)
+                    continue;
+            }
 
             addrConnect = addr;
             break;
