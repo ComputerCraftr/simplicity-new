@@ -1,6 +1,7 @@
 // Copyright (c) 2012-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -11,20 +12,21 @@
  * network protocol versioning
  */
 
-static const int PROTOCOL_VERSION = 70917;
+static const int PROTOCOL_VERSION = 70021;
 
 //! initial proto version, to be increased after version/verack negotiation
 static const int INIT_PROTO_VERSION = 209;
 
 //! In this version, 'getheaders' was introduced.
-static const int GETHEADERS_VERSION = 70077;
+static const int GETHEADERS_VERSION = 70000;
 
 //! disconnect from peers older than this proto version
-static const int MIN_PEER_PROTO_VERSION_BEFORE_ENFORCEMENT = 70916;
-static const int MIN_PEER_PROTO_VERSION_AFTER_ENFORCEMENT = 70917;
+static const int MIN_PEER_PROTO_VERSION_BEFORE_ENFORCEMENT  = 70020;
+static const int MIN_PEER_PROTO_VERSION_AFTER_ENFORCEMENT   = 70021;
+static const int MIN_PEER_PROTO_VERSION_AFTER_ENFORCEMENT_2 = PROTOCOL_VERSION;
 
 //! masternodes older than this proto version use old strMessage format for mnannounce
-static const int MIN_PEER_MNANNOUNCE = 70913;
+static const int MIN_PEER_MNANNOUNCE = 70021;
 
 //! nTime field added to CAddress, starting with this version;
 //! if possible, avoid requesting addresses nodes older than this
