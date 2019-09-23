@@ -1821,7 +1821,7 @@ bool CWallet::SelectStakeCoins(std::list<std::unique_ptr<CStakeInput> >& listInp
 
     /* Disable zSPL Staking
     //zSPL
-    if (GetBoolArg("-zsplstake", true) && chainActive.Height() >= Params().Zerocoin_Block_V2_Start() && !IsSporkActive(SPORK_16_ZEROCOIN_MAINTENANCE_MODE)) {
+    if ((GetBoolArg("-zsplstake", true) || fPrecompute) && chainActive.Height() >= Params().Zerocoin_Block_V2_Start() && !IsSporkActive(SPORK_16_ZEROCOIN_MAINTENANCE_MODE)) {
         //Only update zSPL set once per update interval
         bool fUpdate = false;
         static int64_t nTimeLastUpdate = 0;
@@ -2420,7 +2420,7 @@ bool CWallet::CreateCoinStake(
 
             if (!GetCoinAge(txNew, nTxNewTime, pindexPrev->nHeight + 1, nCoinAge))
                 return error("CreateCoinStake : failed to calculate coin age");
-            //LogPrintf("CreateCoinStake() : nCoinAge=%"PRId64"\n", nCoinAge);
+            //LogPrintf("%s : nCoinAge=%"PRId64"\n", __func__, nCoinAge);
 
             nBlockValue = GetBlockValue(pindexPrev->nHeight + 1, true, nCoinAge);
             nCredit += nBlockValue;
