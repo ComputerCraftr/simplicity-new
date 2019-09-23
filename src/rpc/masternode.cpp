@@ -124,7 +124,7 @@ UniValue listmasternodes(const UniValue& params, bool fHelp)
             CNetAddr node = CNetAddr(strHost, false);
             std::string strNetwork = GetNetworkName(node.GetNetwork());
 
-            obj.push_back(Pair("level", mn->Level()));
+            obj.push_back(Pair("level", (int)mn->Level()));
             obj.push_back(Pair("rank", (strStatus == "ENABLED" ? s.first : 0)));
             obj.push_back(Pair("network", strNetwork));
             obj.push_back(Pair("txhash", strTxHash));
@@ -235,22 +235,22 @@ UniValue getmasternodecount (const UniValue& params, bool fHelp)
 
         UniValue total_item{UniValue::VOBJ};
 
-        total_item.push_back(Pair("level", l));
+        total_item.push_back(Pair("level", (int)l));
         total_item.push_back(Pair("count", mnodeman.size(l)));
 
         total.push_back(total_item);
 
         UniValue stable_item{UniValue::VOBJ};
 
-        stable_item.push_back(Pair("level", l));
+        stable_item.push_back(Pair("level", (int)l));
         stable_item.push_back(Pair("count", mnodeman.stable_size(l)));
 
         stable.push_back(stable_item);
 
         UniValue enabled_item{UniValue::VOBJ};
 
-        enabled_item.push_back(Pair("level", l));
-        enabled_item.push_back(Pair("count", mnodeman.CountEnabled(l)));
+        enabled_item.push_back(Pair("level", (int)l));
+        enabled_item.push_back(Pair("count", (int)mnodeman.CountEnabled(l)));
 
         enabled.push_back(enabled_item);
 
@@ -261,15 +261,15 @@ UniValue getmasternodecount (const UniValue& params, bool fHelp)
         if (chain_tip)
             mnodeman.GetNextMasternodeInQueueForPayment(chain_tip->nHeight, l, true, inqueue_count);
 
-        inqueue_item.push_back(Pair("level", l));
-        inqueue_item.push_back(Pair("count", inqueue_count));
+        inqueue_item.push_back(Pair("level", (int)l));
+        inqueue_item.push_back(Pair("count", (int)inqueue_count));
 
         inqueue.push_back(inqueue_item);
 
         UniValue obfcomat_item{UniValue::VOBJ};
 
-        obfcomat_item.push_back(Pair("level", l));
-        obfcomat_item.push_back(Pair("count", mnodeman.CountEnabled(l, ActiveProtocol())));
+        obfcomat_item.push_back(Pair("level", (int)l));
+        obfcomat_item.push_back(Pair("count", (int)mnodeman.CountEnabled(l, ActiveProtocol())));
 
         obfcompat.push_back(obfcomat_item);
     }
@@ -323,7 +323,7 @@ UniValue masternodecurrent (const UniValue& params, bool fHelp)
 
         UniValue obj(UniValue::VOBJ);
 
-        obj.push_back(Pair("level", winner->Level()));
+        obj.push_back(Pair("level", (int)winner->Level()));
         obj.push_back(Pair("protocol", (int64_t)winner->protocolVersion));
         obj.push_back(Pair("txhash", winner->vin.prevout.hash.ToString()));
         obj.push_back(Pair("pubkey", CBitcoinAddress(winner->pubKeyCollateralAddress.GetID()).ToString()));

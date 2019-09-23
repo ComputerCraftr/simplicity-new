@@ -8,6 +8,7 @@
 #include "masternodeconfig.h"
 #include "util.h"
 #include "guiinterface.h"
+#include "spork.h"
 #include <base58.h>
 
 CMasternodeConfig masternodeConfig;

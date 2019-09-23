@@ -680,7 +680,7 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew, CAmou
         if (payee.nVotes < MNPAYMENTS_SIGNATURES_REQUIRED || (!payNewTiers && payee.mnlevel != CMasternode::LevelValue::MAX))
             continue;
 
-        auto requiredMasternodePayment = GetMasternodePayment(nBlockHeight, nBlockValue, fProofOfStake, payee.mnlevel, nMasternode_Drift_Count, txNew.IsZerocoinSpend());
+        auto requiredMasternodePayment = GetMasternodePayment(nBlockHeight, nBlockValue, fProofOfStake, payee.mnlevel, nMasternode_Drift_Count, txNew.vout[1].IsZerocoinMint());
 
         auto payee_out = std::find_if(txNew.vout.cbegin(), txNew.vout.cend(), [&payee, &requiredMasternodePayment](const CTxOut& out){
             auto is_payee          = payee.scriptPubKey == out.scriptPubKey;

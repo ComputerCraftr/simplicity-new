@@ -985,14 +985,15 @@ bool GetCoinAge(const CTransaction& tx, const unsigned int nTxTime, int nBestHei
 
         // Read block header
         CBlockHeader prevblock = pindex->GetBlockHeader();
-
-        if (prevblock.nTime + nStakeMinAge > nTxTime)
-            continue; // only count coins meeting min age requirement
+        const int nBlockFromHeight = pindex->nHeight;
 
         if (nTxTime < prevblock.nTime) {
             LogPrintf("GetCoinAge: Timestamp Violation: txtime less than txPrev.nTime");
             return false; // Transaction timestamp violation
         }
+
+        if (!Params().HasStakeMinAgeOrDepth(nBestHeight, nTxTime, nBlockFromHeight, prevblock.nTime))
+            continue; // only count coins meeting min age requirement
 
         unsigned int nTimeDiff = nTxTime - (nBestHeight >= Params().WALLET_UPGRADE_BLOCK() ? prevblock.nTime : txPrev.nTime); // switch to prevblock.nTime after upgrade
         if (nTimeDiff > nStakeMaxAge && nBestHeight >= Params().WALLET_UPGRADE_BLOCK())
