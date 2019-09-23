@@ -2,6 +2,7 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2018 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -313,6 +314,11 @@ unsigned int MurmurHash3(unsigned int nHashSeed, const std::vector<unsigned char
 
 void BIP32Hash(const ChainCode chainCode, unsigned int nChild, unsigned char header, const unsigned char data[32], unsigned char output[64]);
 
+uint256 scrypt_salted_multiround_hash(const void* input, size_t inputlen, const void* salt, size_t saltlen, const unsigned int nRounds);
+uint256 scrypt_salted_hash(const void* input, size_t inputlen, const void* salt, size_t saltlen);
+uint256 scrypt_hash(const void* input, size_t inputlen, const unsigned int N=1024);
+uint256 scrypt_blockhash(const void* input);
+
 //int HMAC_SHA512_Init(HMAC_SHA512_CTX *pctx, const void *pkey, size_t len);
 //int HMAC_SHA512_Update(HMAC_SHA512_CTX *pctx, const void *pdata, size_t len);
 //int HMAC_SHA512_Final(unsigned char *pmd, HMAC_SHA512_CTX *pctx);
@@ -320,7 +326,6 @@ void BIP32Hash(const ChainCode chainCode, unsigned int nChild, unsigned char hea
 /* ----------- Quark Hash ------------------------------------------------ */
 template <typename T1>
 inline uint256 HashQuark(const T1 pbegin, const T1 pend)
-
 {
     sph_blake512_context ctx_blake;
     sph_bmw512_context ctx_bmw;
@@ -401,6 +406,22 @@ inline uint256 HashQuark(const T1 pbegin, const T1 pend)
         sph_jh512_close(&ctx_jh, static_cast<void*>(&hash[8]));
     }
     return hash[8].trim256();
+}
+
+/* ----------- Scrypt Hash ------------------------------------------------ */
+template <typename T1>
+inline uint256 HashScrypt(const T1 pbegin, const T1 pend)
+{
+    static unsigned char pblank[1];
+    return scrypt_hash((pbegin == pend ? pblank : static_cast<const void*>(&pbegin[0])), (pend - pbegin) * sizeof(pbegin[0]));
+}
+
+/* ----------- Scrypt^2 Hash ------------------------------------------------ */
+template <typename T1>
+inline uint256 HashScryptSquared(const T1 pbegin, const T1 pend)
+{
+    static unsigned char pblank[1];
+    return scrypt_hash((pbegin == pend ? pblank : static_cast<const void*>(&pbegin[0])), (pend - pbegin) * sizeof(pbegin[0]), 1048576);
 }
 
 void scrypt_hash(const char* pass, unsigned int pLen, const char* salt, unsigned int sLen, char* output, unsigned int N, unsigned int r, unsigned int p, unsigned int dkLen);

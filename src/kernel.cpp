@@ -1,5 +1,6 @@
 // Copyright (c) 2012-2013 The PPCoin developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -15,11 +16,17 @@
 #include "zsplchain.h"
 
 // v1 modifier interval.
-static const int64_t OLD_MODIFIER_INTERVAL = 2087;
+static const int64_t OLD_MODIFIER_INTERVAL = 2087; //60
 
 // Hard checkpoints of stake modifiers to ensure they are deterministic
 static std::map<int, unsigned int> mapStakeModifierCheckpoints =
     boost::assign::map_list_of(0, 0xfd11f4e7u);
+
+// Get time weight
+int64_t GetWeight(int64_t nIntervalBeginning, int64_t nIntervalEnd)
+{
+    return min(nIntervalEnd - nIntervalBeginning - nStakeMinAge, (int64_t)nStakeMaxAge);
+}
 
 // Get the last stake modifier and its generation time from a given block
 static bool GetLastStakeModifier(const CBlockIndex* pindex, uint64_t& nStakeModifier, int64_t& nModifierTime)
@@ -39,7 +46,7 @@ static bool GetLastStakeModifier(const CBlockIndex* pindex, uint64_t& nStakeModi
 static int64_t GetStakeModifierSelectionIntervalSection(int nSection)
 {
     assert(nSection >= 0 && nSection < 64);
-    int64_t a = MODIFIER_INTERVAL  * 63 / (63 + ((63 - nSection) * (MODIFIER_INTERVAL_RATIO - 1)));
+    int64_t a = MODIFIER_INTERVAL * 63 / (63 + ((63 - nSection) * (MODIFIER_INTERVAL_RATIO - 1)));
     return a;
 }
 
@@ -172,8 +179,8 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeMod
 
     // Sort candidate blocks by timestamp
     std::vector<std::pair<int64_t, uint256> > vSortedByTimestamp;
-    vSortedByTimestamp.reserve(64 * MODIFIER_INTERVAL  / Params().TargetSpacing());
-    int64_t nSelectionIntervalStart = (pindexPrev->GetBlockTime() / MODIFIER_INTERVAL ) * MODIFIER_INTERVAL  - OLD_MODIFIER_INTERVAL;
+    vSortedByTimestamp.reserve(64 * MODIFIER_INTERVAL / (2 * Params().TargetSpacing())); // effective PoS spacing is 160 seconds
+    int64_t nSelectionIntervalStart = (pindexPrev->GetBlockTime() / MODIFIER_INTERVAL ) * MODIFIER_INTERVAL - OLD_MODIFIER_INTERVAL;
     const CBlockIndex* pindex = pindexPrev;
 
     while (pindex && pindex->GetBlockTime() >= nSelectionIntervalStart) {
@@ -342,6 +349,9 @@ bool GetHashProofOfStake(const CBlockIndex* pindexPrev, CStakeInput* stake, cons
 
 bool Stake(const CBlockIndex* pindexPrev, CStakeInput* stakeInput, unsigned int nBits, unsigned int& nTimeTx, uint256& hashProofOfStake)
 {
+    if (CBlockHeader::CURRENT_VERSION == Params().WALLET_UPGRADE_VERSION() && chainActive.Height() + 1 < Params().WALLET_UPGRADE_BLOCK() && Params().NetworkID() == CBaseChainParams::MAIN)
+        return error("%s : INFO: staking on new wallet disabled until block %d", __func__, Params().WALLET_UPGRADE_BLOCK()); // Do not stake until the upgrade block
+
     int prevHeight = pindexPrev->nHeight;
 
     // get stake input pindex
@@ -440,8 +450,9 @@ bool initStakeInput(const CBlock block, std::unique_ptr<CStakeInput>& stake, int
                          __func__, txin.prevout.hash.GetHex(), block.GetHash().GetHex());
 
         //verify signature and script
-        if (!VerifyScript(txin.scriptSig, txPrev.vout[txin.prevout.n].scriptPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, TransactionSignatureChecker(&tx, 0)))
-            return error("%s : VerifySignature failed on coinstake %s", __func__, tx.GetHash().ToString().c_str());
+        ScriptError serror = SCRIPT_ERR_OK;
+        if (!VerifyScript(txin.scriptSig, txPrev.vout[txin.prevout.n].scriptPubKey, STANDARD_SCRIPT_VERIFY_FLAGS, TransactionSignatureChecker(&tx, 0), &serror))
+            return error("CheckProofOfStake() : VerifySignature failed on coinstake %s, %s", tx.GetHash().ToString().c_str(), ScriptErrorString(serror));
 
         CSplStake* splInput = new CSplStake();
         splInput->SetInput(txPrev, txin.prevout.n);
@@ -476,7 +487,7 @@ bool CheckProofOfStake(const CBlock block, uint256& hashProofOfStake, std::uniqu
                              __func__, nPreviousBlockHeight, nTxTime, nBlockFromTime, nBlockFromHeight);
     }
 
-    if (!CheckStakeKernelHash(pindexPrev, block.nBits, stake.get(), nTxTime, hashProofOfStake, true))
+    if ((block.nVersion >= Params().WALLET_UPGRADE_VERSION() || Params().NetworkID() != CBaseChainParams::MAIN) && !CheckStakeKernelHash(pindexPrev, block.nBits, stake.get(), nTxTime, hashProofOfStake, true))
         return error("%s : INFO: check kernel failed on coinstake %s, hashProof=%s", __func__,
                      tx.GetHash().GetHex(), hashProofOfStake.GetHex());
 

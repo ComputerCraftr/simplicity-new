@@ -2,6 +2,7 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -58,16 +59,18 @@ class CValidationState;
 struct CBlockTemplate;
 struct CNodeStateStats;
 
+inline int64_t GetMNCollateral(int nHeight) { return 200000; }
+
 /** Default for -blockmaxsize and -blockminsize, which control the range of sizes the mining code will create **/
-static const unsigned int DEFAULT_BLOCK_MAX_SIZE = 750000;
+static const unsigned int DEFAULT_BLOCK_MAX_SIZE = MAX_BLOCK_SIZE_CURRENT / 4;
 static const unsigned int DEFAULT_BLOCK_MIN_SIZE = 0;
 /** Default for -blockprioritysize, maximum space for zero/low-fee transactions **/
 static const unsigned int DEFAULT_BLOCK_PRIORITY_SIZE = 50000;
 /** Default for accepting alerts from the P2P network. */
 static const bool DEFAULT_ALERTS = true;
 /** The maximum size for transactions we're willing to relay/mine */
-static const unsigned int MAX_STANDARD_TX_SIZE = 100000;
-static const unsigned int MAX_ZEROCOIN_TX_SIZE = 150000;
+static const unsigned int MAX_STANDARD_TX_SIZE = 300000;
+static const unsigned int MAX_ZEROCOIN_TX_SIZE = MAX_STANDARD_TX_SIZE;
 /** The maximum allowed number of signature check operations in a block (network rule) */
 static const unsigned int MAX_BLOCK_SIGOPS_CURRENT = MAX_BLOCK_SIZE_CURRENT / 50;
 static const unsigned int MAX_BLOCK_SIGOPS_LEGACY = MAX_BLOCK_SIZE_LEGACY / 50;
@@ -112,12 +115,12 @@ static const bool DEFAULT_PEERBLOOMFILTERS_ZC = false;
 /** If the tip is older than this (in seconds), the node is considered to be in initial block download. */
 static const int64_t DEFAULT_MAX_TIP_AGE = 24 * 60 * 60;
 
-/** Default for -blockspamfilter, use header spam filter */
-static const bool DEFAULT_BLOCK_SPAM_FILTER = true;
-/** Default for -blockspamfiltermaxsize, maximum size of the list of indexes in the block spam filter */
-static const unsigned int DEFAULT_BLOCK_SPAM_FILTER_MAX_SIZE = 100;
-/** Default for -blockspamfiltermaxavg, maximum average size of an index occurrence in the block spam filter */
-static const unsigned int DEFAULT_BLOCK_SPAM_FILTER_MAX_AVG = 10;
+/** Default for -headerspamfilter, use header spam filter */
+static const bool DEFAULT_HEADER_SPAM_FILTER = true;
+/** Default for -headerspamfiltermaxsize, maximum size of the list of indexes in the header spam filter */
+static const unsigned int DEFAULT_HEADER_SPAM_FILTER_MAX_SIZE = 100;
+/** Default for -headerspamfiltermaxavg, maximum average size of an index occurrence in the header spam filter */
+static const unsigned int DEFAULT_HEADER_SPAM_FILTER_MAX_AVG = 10;
 
 /** "reject" message codes */
 static const unsigned char REJECT_MALFORMED = 0x01;
@@ -166,6 +169,8 @@ extern bool fClearSpendCache;
 extern bool fLargeWorkForkFound;
 extern bool fLargeWorkInvalidChainFound;
 
+extern unsigned int nStakeMinAge;
+extern unsigned int nStakeMaxAge;
 extern int64_t nLastCoinStakeSearchInterval;
 extern int64_t nLastCoinStakeSearchTime;
 extern int64_t nReserveBalance;
@@ -182,6 +187,9 @@ extern CLightWorker lightWorker;
 
 /** Minimum disk space required - used in CheckDiskSpace() */
 static const uint64_t nMinDiskSpace = 52428800;
+
+/** Block files containing a block-height within MIN_BLOCKS_TO_KEEP of chainActive.Tip() will not be pruned. */
+static const unsigned int MIN_BLOCKS_TO_KEEP = 2160; // number of blocks in 2 days
 
 /** Register with a network node to receive its signals */
 void RegisterNodeSignals(CNodeSignals& nodeSignals);
@@ -242,11 +250,12 @@ bool GetOutput(const uint256& hash, unsigned int index, CValidationState& state,
 
 // ***TODO***
 double ConvertBitsToDouble(unsigned int nBits);
-int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCount, bool isZSPLStake);
-unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader* pblock, bool fProofOfStake);
+int64_t GetMasternodePayment(int nHeight, int64_t blockValue, bool fProofOfStake, unsigned mnlevel, int nMasternodeCount, bool isZSPLStake);
 
 bool ActivateBestChain(CValidationState& state, CBlock* pblock = NULL, bool fAlreadyChecked = false);
-CAmount GetBlockValue(int nHeight);
+CAmount GetBlockValue(int nHeight, bool fProofOfStake, uint64_t nCoinAge);
+bool IsTreasuryBlock(int nHeight);
+int64_t GetTreasuryAward(int nHeight);
 
 /** Create a new block index entry for a given block hash */
 CBlockIndex* InsertBlockIndex(uint256 hash);
@@ -267,6 +276,7 @@ bool AcceptableInputs(CTxMemPool& pool, CValidationState& state, const CTransact
 
 int GetInputAge(CTxIn& vin);
 int GetInputAgeIX(uint256 nTXHash, CTxIn& vin);
+bool GetCoinAge(const CTransaction& tx, unsigned int nTxTime, int nBestHeight, uint64_t& nCoinAge);
 int GetIXConfirmations(uint256 nTXHash);
 
 struct CNodeStateStats {
@@ -355,23 +365,19 @@ bool CheckInputs(const CTransaction& tx, CValidationState& state, const CCoinsVi
 void UpdateCoins(const CTransaction& tx, CValidationState& state, CCoinsViewCache& inputs, CTxUndo& txundo, int nHeight);
 
 /** Context-independent validity checks */
-bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fRejectBadUTXO, CValidationState& state, bool fFakeSerialAttack = false);
+bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fRejectBadUTXO, CValidationState& state);
 bool CheckZerocoinMint(const uint256& txHash, const CTxOut& txout, CValidationState& state, bool fCheckOnly = false);
-bool CheckZerocoinSpend(const CTransaction& tx, bool fVerifySignature, CValidationState& state, bool fFakeSerialAttack = false);
+bool CheckZerocoinSpend(const CTransaction& tx, bool fVerifySignature, CValidationState& state);
 bool ContextualCheckZerocoinSpend(const CTransaction& tx, const libzerocoin::CoinSpend* spend, CBlockIndex* pindex, const uint256& hashBlock);
 bool ContextualCheckZerocoinSpendNoSerialCheck(const CTransaction& tx, const libzerocoin::CoinSpend* spend, CBlockIndex* pindex, const uint256& hashBlock);
 bool IsTransactionInChain(const uint256& txId, int& nHeightTx, CTransaction& tx);
 bool IsTransactionInChain(const uint256& txId, int& nHeightTx);
 bool IsBlockHashInChain(const uint256& hashBlock);
 bool ValidOutPoint(const COutPoint out, int nHeight);
-void AddWrappedSerialsInflation();
 void RecalculateZSPLSpent();
 void RecalculateZSPLMinted();
 bool RecalculateSPLSupply(int nHeightStart);
 bool ReindexAccumulators(std::list<uint256>& listMissingCheckpoints, std::string& strError);
-
-// Fake Serial attack Range
-bool isBlockBetweenFakeSerialAttackRange(int nHeight);
 
 // Public coin spend
 bool CheckPublicCoinSpendEnforced(int blockHeight, bool isPublicSpend);
