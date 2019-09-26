@@ -125,9 +125,9 @@ public:
     {
         LOCK(cs_vecPayments);
 
-        auto payment = vecPayments.cend();
+        std::vector<CMasternodePayee>::const_iterator payment = vecPayments.cend();
 
-        for (auto p = vecPayments.cbegin(), e = vecPayments.cend(); p != e; ++p) {
+        for (std::vector<CMasternodePayee>::const_iterator p = vecPayments.cbegin(), e = vecPayments.cend(); p != e; ++p) {
 
             if (p->mnlevel != mnlevel)
                 continue;

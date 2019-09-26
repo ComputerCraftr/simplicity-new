@@ -375,7 +375,7 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_t nFe
                 txNew.vout[i].nValue = masternodePayment;
 
                 //subtract mn payment from the stake reward
-                if (!txNew.vout[1].IsZerocoinMint())
+                if (!txNew.vout[1].IsZerocoinMint()) {
                     if (outputs == 1) {
                         // Majority of cases; do it quick and move on
                         txNew.vout[1].nValue -= masternodePayment;
@@ -389,6 +389,7 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_t nFe
                         // in case it's not an even division, take the last bit of dust from the last one
                         txNew.vout[outputs].nValue -= mnPaymentRemainder;
                     }
+                }
             } else {
                 txNew.vout.resize(1 + level);
                 txNew.vout[level].scriptPubKey = payee;
@@ -568,7 +569,7 @@ bool CMasternodePayments::IsScheduled(CMasternode& mn, int nSameLevelMNCount, in
     for (int64_t h_upper_bound = nHeight + 10, h = h_upper_bound - std::min(10, nSameLevelMNCount - 1); h < h_upper_bound; ++h) {
         if (h == nNotBlockHeight) continue;
         if (mapMasternodeBlocks.count(h)) {
-            if (mapMasternodeBlocks[h].GetPayee(mn.Level(), payee)) {
+            if (mapMasternodeBlocks.at(h).GetPayee(mn.Level(), payee)) {
                 if (mnpayee == payee) {
                     return true;
                 }
@@ -630,7 +631,7 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew, CAmou
         if (payee.nVotes < MNPAYMENTS_SIGNATURES_REQUIRED || (!payNewTiers && payee.mnlevel != CMasternode::LevelValue::MAX))
             continue;
 
-        std::pair ins_res = max_signatures.emplace(payee.mnlevel, payee.nVotes);
+        std::pair<std::map<unsigned, int>::iterator, bool> ins_res = max_signatures.emplace(payee.mnlevel, payee.nVotes);
 
         if (ins_res.second)
             continue;
@@ -649,11 +650,11 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew, CAmou
         if (payee.nVotes < MNPAYMENTS_SIGNATURES_REQUIRED || (!payNewTiers && payee.mnlevel != CMasternode::LevelValue::MAX))
             continue;
 
-        auto requiredMasternodePayment = GetMasternodePayment(nBlockHeight, nBlockValue, fProofOfStake, payee.mnlevel, nMasternode_Drift_Count, txNew.vout[1].IsZerocoinMint());
+        CAmount requiredMasternodePayment = GetMasternodePayment(nBlockHeight, nBlockValue, fProofOfStake, payee.mnlevel, nMasternode_Drift_Count, txNew.vout[1].IsZerocoinMint());
 
-        auto payee_out = std::find_if(txNew.vout.cbegin(), txNew.vout.cend(), [&payee, &requiredMasternodePayment](const CTxOut& out){
-            auto is_payee = payee.scriptPubKey == out.scriptPubKey;
-            auto is_value_required = out.nValue >= requiredMasternodePayment;
+        auto payee_out = std::find_if(txNew.vout.cbegin(), txNew.vout.cend(), [&payee, &requiredMasternodePayment](const CTxOut& out) {
+            bool is_payee = payee.scriptPubKey == out.scriptPubKey;
+            bool is_value_required = out.nValue >= requiredMasternodePayment;
 
             if (is_payee && !is_value_required)
                 LogPrint("masternode","Masternode payment is out of drift range. Paid=%s Min=%s\n", FormatMoney(out.nValue).c_str(), FormatMoney(requiredMasternodePayment).c_str());
@@ -673,7 +674,7 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew, CAmou
         CTxDestination address1;
         ExtractDestination(payee.scriptPubKey, address1);
 
-        auto address2 = std::to_string(payee.mnlevel) + ":" + CBitcoinAddress(address1).ToString();
+        std::string address2 = std::to_string(payee.mnlevel) + ":" + CBitcoinAddress(address1).ToString();
 
         if (strPayeesPossible == "")
             strPayeesPossible += address2;
@@ -878,7 +879,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     if (winners.empty())
         return false;
 
-    for (auto& winner : winners) {
+    for (CMasternodePaymentWinner& winner : winners) {
         winner.Relay();
     }
 
@@ -924,7 +925,7 @@ void CMasternodePayments::Sync(CNode* node, int nCountNeeded)
         nHeight = chainActive.Tip()->nHeight;
     }
 
-    auto mn_counts = mnodeman.CountEnabledByLevels();
+    std::map<unsigned, int> mn_counts = mnodeman.CountEnabledByLevels();
 
     for(auto& count : mn_counts)
         count.second = std::min(nCountNeeded, (int)(count.second * 1.25));
@@ -932,9 +933,9 @@ void CMasternodePayments::Sync(CNode* node, int nCountNeeded)
     int nInvCount = 0;
 
     for(const auto& vote : mapMasternodePayeeVotes) {
-        const auto& winner = vote.second;
+        const CMasternodePaymentWinner& winner = vote.second;
 
-        bool push =  winner.nBlockHeight >= nHeight - mn_counts[winner.payeeLevel]
+        bool push = winner.nBlockHeight >= nHeight - mn_counts[winner.payeeLevel]
                   && winner.nBlockHeight <= nHeight + 20;
 
         if(!push)
