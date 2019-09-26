@@ -278,8 +278,22 @@ public:
     bool GetBlockPayee(int nBlockHeight, unsigned mnlevel, CScript& payee);
     bool IsTransactionValid(const CTransaction& txNew, int nBlockHeight, CAmount& nBlockValue, bool fProofOfStake);
     bool IsScheduled(CMasternode& mn, int nSameLevelMNCount, int nNotBlockHeight) const;
-    bool CanVote(const COutPoint& outMasternode, int nBlockHeight, unsigned mnlevel);
+    bool CanVote(const COutPoint& outMasternode, int nBlockHeight, unsigned mnlevel)
+    {
+        LOCK(cs_mapMasternodePayeeVotes);
 
+        uint256 key = ((outMasternode.hash + outMasternode.n) << 4) + mnlevel;
+
+        if (mapMasternodesLastVote.count(key)) {
+            if (mapMasternodesLastVote[key] == nBlockHeight) {
+                return false;
+            }
+        }
+
+        //record this masternode voted
+        mapMasternodesLastVote[key] = nBlockHeight;
+        return true;
+    }
     int GetMinMasternodePaymentsProto();
     void ProcessMessageMasternodePayments(CNode* pfrom, std::string& strCommand, CDataStream& vRecv);
     std::string GetRequiredPaymentsString(int nBlockHeight);

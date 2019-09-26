@@ -288,7 +288,7 @@ int64_t CMasternode::GetLastPaid()
 
     const CBlockIndex* BlockReading = pindexPrev;
 
-    int nMnCount = mnodeman.CountEnabled(Level()) * 125 / 100;
+    int nMnCount = mnodeman.CountEnabled(Level()) * 1.25;
     int n = 0;
     for (unsigned int i = 1; BlockReading && BlockReading->nHeight > 0; i++) {
         if (n >= nMnCount) {
@@ -503,7 +503,7 @@ bool CMasternodeBroadcast::Create(CTxIn txin, CService service, CKey keyCollater
 
     if (mnode && mnode->vin != txin) {
         strErrorRet = strprintf("Duplicate Masternode address: %s", service.ToString());
-        LogPrint("masternode","CMasternodeBroadcast::Create -- CActiveMasternode::CreateBroadcast() -  %s\n", strErrorRet);
+        LogPrint("masternode","CMasternodeBroadcast::Create -- %s\n", strErrorRet);
         mnbRet = CMasternodeBroadcast();
         return false;
     }
