@@ -612,20 +612,23 @@ UniValue getblocktemplate(const UniValue& params, bool fHelp)
     result.push_back(Pair("votes", aVotes));
 
 
-    if (pblock->payee != CScript()) {
-        CTxDestination address1;
-        ExtractDestination(pblock->payee, address1);
-        CBitcoinAddress address2(address1);
-        result.push_back(Pair("payee", address2.ToString().c_str()));
-        result.push_back(Pair("payee_amount", (int64_t)pblock->vtx[0].vout[1].nValue));
-    } else {
-        result.push_back(Pair("payee", ""));
-        result.push_back(Pair("payee_amount", ""));
+    UniValue superblockObjArray(UniValue::VARR);
+    if(pblock->vtx[0].vout.size() > 1) { 
+        for (const CTxOut& txout : pblock->vtx[0].vout) {
+            if(txout == pblock->vtx[0].vout[0])
+                continue;
+            UniValue entry(UniValue::VOBJ);
+            CTxDestination address1;
+            ExtractDestination(txout.scriptPubKey, address1);
+            CBitcoinAddress address2(address1);
+            entry.push_back(Pair("payee", address2.ToString().c_str()));
+            entry.push_back(Pair("script", HexStr(txout.scriptPubKey.begin(), txout.scriptPubKey.end())));
+            entry.push_back(Pair("amount", txout.nValue));
+            superblockObjArray.push_back(entry);
+        }
     }
-
-    result.push_back(Pair("masternode_payments", pblock->nTime > Params().StartMasternodePayments()));
-    result.push_back(Pair("enforce_masternode_payments", true));
-
+    result.push_back(Pair("superblock", superblockObjArray));
+    result.push_back(Pair("superblocks_enabled", true));
     return result;
 }
 
