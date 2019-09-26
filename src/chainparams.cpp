@@ -158,7 +158,7 @@ public:
         nMaxMoneyOut = 21000000000 * COIN;
 
         /** Height or Time Based Activations **/
-        nMandatoryUpgradeBlock = 1000000;
+        nMandatoryUpgradeBlock = 976000;
         nUpgradeBlockVersion = 8; //Block headers must be this version after upgrade block
         nModifierUpdateBlock = -1;
         nZerocoinStartHeight = 2100000000;
@@ -294,7 +294,7 @@ public:
         pchMessageStart[1] = 0xe3;
         pchMessageStart[2] = 0xdc;
         pchMessageStart[3] = 0xc6;
-        vAlertPubKey = ParseHex("000010e83b2703ccf322f7dbd62dd5855ac7c10bd055814ce121ba32607d573b8810c02c0582aed05b4deb9c4b77b26d92428c61256cd42774babea0a073b2ed0c9");
+        vAlertPubKey = ParseHex("026bd9c644414e5cf9da3a8d0de9f09a0ae2e3818fd9d6434b4822edab863180cd");
         nDefaultPort = 21957;
         bnProofOfWorkLimit = ~uint256(0) >> 12;
         nEnforceBlockUpgradeMajority = 3780; // 70%
@@ -325,7 +325,7 @@ public:
         // Public coin spend enforcement
         nPublicZCSpends = nZerocoinStartHeight + 30;
 
-        vTreasuryRewardPubKey="y6FG1LZBvi6oaTgWTj8bTmb4irVsEAgfUA";
+        vTreasuryRewardPubKey="026bd9c644414e5cf9da3a8d0de9f09a0ae2e3818fd9d6434b4822edab863180cd";
         nStartTreasuryBlock = 10;
         nTreasuryBlockStep = 20; //24 * 6 * 60 / nTargetSpacing; // Ten times per day
         nMasternodeTiersStartHeight = -1;
@@ -366,9 +366,9 @@ public:
 
         nPoolMaxTransactions = 2;
         nBudgetCycleBlocks = 24 * 6 * 60 / nTargetSpacing; //!< Ten cycles per day on testnet
-        strSporkKey = "04E88BB455E2A04E65FCC41D88CD367E9CCE1F5A409BE94D8C2B4B35D223DED9C8E2F4E061349BA3A38839282508066B6DC4DB72DD432AC4067991E6BF20176127";
-        strSporkKeyOld = "04A8B319388C0F8588D238B9941DC26B26D3F9465266B368A051C5C100F79306A557780101FE2192FE170D7E6DEFDCBEE4C8D533396389C0DAFFDBC842B002243C";
-        strObfuscationPoolDummyAddress = "y57cqfGRkekRyDRNeJiLtYVEbvhXrNbmox";
+        strSporkKey = "026bd9c644414e5cf9da3a8d0de9f09a0ae2e3818fd9d6434b4822edab863180cd";
+        strSporkKeyOld = "026bd9c644414e5cf9da3a8d0de9f09a0ae2e3818fd9d6434b4822edab863180cd";
+        strObfuscationPoolDummyAddress = "y6S5YPwPCXi2oemSRJGitNPwPjcFJfwbED";
         nStartMasternodePayments = 1420837558; //Fri, 09 Jan 2015 21:05:58 GMT
         nBudget_Fee_Confirmations = 3; // Number of confirmations for the finalization fee. We have to make this very short
                                        // here because we only have a 8 block finalization window on testnet

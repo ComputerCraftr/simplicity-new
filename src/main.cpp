@@ -2056,8 +2056,10 @@ int64_t GetBlockValue(int nHeight, bool fProofOfStake, uint64_t nCoinAge)
             nSubsidy = 0 * COIN;
         else if (nHeight <= 2000)
             nSubsidy = 500 * COIN;
-        else //if (nHeight > 2000)
+        else if (nHeight < Params().WALLET_UPGRADE_BLOCK())
             nSubsidy = 100 * COIN;
+        else
+            nSubsidy = 1000 * COIN;
     }
 
     if (nHeight >= Params().TreasuryStartBlock())
