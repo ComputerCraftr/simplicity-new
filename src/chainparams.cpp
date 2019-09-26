@@ -116,7 +116,7 @@ libzerocoin::ZerocoinParams* CChainParams::Zerocoin_Params(bool useModulusV1) co
 bool CChainParams::HasStakeMinAgeOrDepth(const int contextHeight, const uint32_t contextTime,
         const int utxoFromBlockHeight, const uint32_t utxoFromBlockTime) const
 {
-    // before stake modifier V2, the age required was 2 * 60 * 60 (1 hour) / not required on regtest
+    // before stake modifier V2, the age required was 2 * 60 * 60 (2 hours) / not required on regtest
     if (!IsStakeModifierV2(contextHeight))
         return (NetworkID() == CBaseChainParams::REGTEST || (utxoFromBlockTime + 7200 <= contextTime));
 
@@ -294,7 +294,7 @@ public:
         pchMessageStart[1] = 0xe3;
         pchMessageStart[2] = 0xdc;
         pchMessageStart[3] = 0xc6;
-        vAlertPubKey = ParseHex("026bd9c644414e5cf9da3a8d0de9f09a0ae2e3818fd9d6434b4822edab863180cd");
+        vAlertPubKey = ParseHex("027b8f8990b9df426f6d4800ee345ab42d377ea2029dd8638abae427d14a6b255b");
         nDefaultPort = 21957;
         bnProofOfWorkLimit = ~uint256(0) >> 12;
         nEnforceBlockUpgradeMajority = 3780; // 70%
@@ -325,7 +325,7 @@ public:
         // Public coin spend enforcement
         nPublicZCSpends = nZerocoinStartHeight + 30;
 
-        vTreasuryRewardPubKey="026bd9c644414e5cf9da3a8d0de9f09a0ae2e3818fd9d6434b4822edab863180cd";
+        vTreasuryRewardPubKey="027b8f8990b9df426f6d4800ee345ab42d377ea2029dd8638abae427d14a6b255b";
         nStartTreasuryBlock = 10;
         nTreasuryBlockStep = 20; //24 * 6 * 60 / nTargetSpacing; // Ten times per day
         nMasternodeTiersStartHeight = -1;
@@ -366,8 +366,8 @@ public:
 
         nPoolMaxTransactions = 2;
         nBudgetCycleBlocks = 24 * 6 * 60 / nTargetSpacing; //!< Ten cycles per day on testnet
-        strSporkKey = "026bd9c644414e5cf9da3a8d0de9f09a0ae2e3818fd9d6434b4822edab863180cd";
-        strSporkKeyOld = "026bd9c644414e5cf9da3a8d0de9f09a0ae2e3818fd9d6434b4822edab863180cd";
+        strSporkKey = "027b8f8990b9df426f6d4800ee345ab42d377ea2029dd8638abae427d14a6b255b";
+        strSporkKeyOld = "027b8f8990b9df426f6d4800ee345ab42d377ea2029dd8638abae427d14a6b255b";
         strObfuscationPoolDummyAddress = "y6S5YPwPCXi2oemSRJGitNPwPjcFJfwbED";
         nStartMasternodePayments = 1420837558; //Fri, 09 Jan 2015 21:05:58 GMT
         nBudget_Fee_Confirmations = 3; // Number of confirmations for the finalization fee. We have to make this very short
