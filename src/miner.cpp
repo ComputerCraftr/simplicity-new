@@ -122,7 +122,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
     if (fZerocoinActive)
         pblock->nVersion = std::max(Params().Zerocoin_HeaderVersion(), CBlock::CURRENT_VERSION);
     else
-        pblock->nVersion = std::max(Params().WALLET_UPGRADE_VERSION(), CBlock::CURRENT_VERSION);
+        pblock->nVersion = Params().WALLET_UPGRADE_VERSION();
 
     // -regtest only: allow overriding block.nVersion with
     // -blockversion=N to test forking scenarios

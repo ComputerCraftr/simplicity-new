@@ -3971,7 +3971,7 @@ CBlockIndex* AddToBlockIndex(const CBlock& block)
                 LogPrintf("AddToBlockIndex() : Rejected by stake modifier checkpoint height=%d, modifier=%s \n", pindexNew->nHeight, std::to_string(nStakeModifier));
         } else {
             // compute v2 stake modifier - todo
-            pindexNew->nStakeModifierV2 = block.vtx.size() ? ComputeStakeModifier(pindexNew->pprev, pindexNew->pprev->IsProofOfStake() ? block.vtx[1].vin[0].prevout.hash : block.vtx[0].GetHash()) : uint256();
+            pindexNew->nStakeModifierV2 = block.vtx.size() ? ComputeStakeModifier(pindexNew->pprev, pindexNew->pprev->IsProofOfStake() ? block.vtx[1].vin[0].prevout.hash : block.vtx[0].vout[0].GetHash()) : uint256();
         }
     }
     pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);

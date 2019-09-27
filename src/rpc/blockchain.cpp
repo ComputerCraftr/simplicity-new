@@ -70,6 +70,27 @@ double GetDifficulty(const CBlockIndex* blockindex)
     return dDiff;
 }
 
+double GetPoWKHashPM()
+{
+    int nPoWInterval = 72;
+    int64_t nTargetSpacingWorkMin = 30, nTargetSpacingWork = 30;
+
+    CBlockIndex* pindex = chainActive.Genesis();
+    CBlockIndex* pindexPrevWork = chainActive.Genesis();
+
+    while (pindex) {
+        if (pindex->IsProofOfWork()) {
+            int64_t nActualSpacingWork = pindex->GetBlockTime() - pindexPrevWork->GetBlockTime();
+            nTargetSpacingWork = ((nPoWInterval - 1) * nTargetSpacingWork + nActualSpacingWork + nActualSpacingWork) / (nPoWInterval + 1);
+            nTargetSpacingWork = std::max(nTargetSpacingWork, nTargetSpacingWorkMin);
+            pindexPrevWork = pindex;
+        }
+        pindex = pindex->pnext;
+    }
+
+    return (GetDifficulty() * 1024 * 4294.967296  / nTargetSpacingWork) * 60;  // 60= sec to min, 1024= standard scrypt work to scrypt^2
+}
+
 UniValue blockheaderToJSON(const CBlockIndex* blockindex)
 {
     UniValue result(UniValue::VOBJ);
@@ -929,7 +950,7 @@ UniValue getblockchaininfo(const UniValue& params, bool fHelp)
     obj.push_back(Pair("difficulty", (double)GetDifficulty()));
     obj.push_back(Pair("verificationprogress", Checkpoints::GuessVerificationProgress(chainActive.Tip())));
     obj.push_back(Pair("chainwork", chainActive.Tip()->nChainWork.GetHex()));
-    CBlockIndex* tip = chainActive.Tip();
+    //CBlockIndex* tip = chainActive.Tip();
     //UniValue softforks(UniValue::VARR);
     //softforks.push_back(SoftForkDesc("bip65", 5, tip));
     //obj.push_back(Pair("softforks", softforks));
