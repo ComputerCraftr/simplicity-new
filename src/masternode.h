@@ -121,7 +121,8 @@ public:
         MASTERNODE_WATCHDOG_EXPIRED,
         MASTERNODE_POSE_BAN,
         MASTERNODE_VIN_SPENT,
-        MASTERNODE_POS_ERROR
+        MASTERNODE_POS_ERROR,
+        MASTERNODE_MISSING
     };
 
     enum LevelValue : unsigned {
@@ -289,11 +290,15 @@ public:
     {
         std::string strStatus = "ACTIVE";
 
-        if (activeState == CMasternode::MASTERNODE_ENABLED) strStatus = "ENABLED";
-        if (activeState == CMasternode::MASTERNODE_EXPIRED) strStatus = "EXPIRED";
-        if (activeState == CMasternode::MASTERNODE_VIN_SPENT) strStatus = "VIN_SPENT";
-        if (activeState == CMasternode::MASTERNODE_REMOVE) strStatus = "REMOVE";
-        if (activeState == CMasternode::MASTERNODE_POS_ERROR) strStatus = "POS_ERROR";
+        switch(activeState)
+        {
+            case CMasternode::MASTERNODE_ENABLED:   strStatus = "ENABLED";   break;
+            case CMasternode::MASTERNODE_EXPIRED:   strStatus = "EXPIRED";   break;
+            case CMasternode::MASTERNODE_VIN_SPENT: strStatus = "VIN_SPENT"; break;
+            case CMasternode::MASTERNODE_REMOVE:    strStatus = "REMOVE";    break;
+            case CMasternode::MASTERNODE_POS_ERROR: strStatus = "POS_ERROR"; break;
+            case CMasternode::MASTERNODE_MISSING:   strStatus = "MISSING";   break;
+        }
 
         return strStatus;
     }
