@@ -366,28 +366,26 @@ UniValue getwork(const UniValue& params, bool fHelp)
     if (IsInitialBlockDownload())
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Simplicity is downloading blocks...");
 
-//    if (pindexBest->nHeight >= Params().LastPOWBlock())
+//    if (chainActive.Tip()->nHeight >= Params().LastPOWBlock())
 //        throw JSONRPCError(RPC_MISC_ERROR, "No more PoW blocks");
 
-    typedef map<uint256, pair<CBlock*, CScript> > mapNewBlock_t;
+    typedef std::map<uint256, std::pair<CBlock*, CScript> > mapNewBlock_t;
     static mapNewBlock_t mapNewBlock;    // FIXME: thread safety
-    static vector<CBlock*> vNewBlock;
+    static std::vector<CBlock*> vNewBlock;
+    CReserveKey reservekey(pwalletMain);
 
-    if (params.size() == 0)
-    {
+    if (params.size() == 0) {
         // Update block
         static unsigned int nTransactionsUpdatedLast;
         static CBlockIndex* pindexPrev;
         static int64_t nStart;
         static CBlock* pblock;
-        if (pindexPrev != pindexBest ||
-            (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 60))
-        {
-            if (pindexPrev != pindexBest)
-            {
+        if (pindexPrev != chainActive.Tip() ||
+            (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 60)) {
+            if (pindexPrev != chainActive.Tip()) {
                 // Deallocate old blocks since they're obsolete now
                 mapNewBlock.clear();
-                BOOST_FOREACH(CBlock* pblock, vNewBlock)
+                for (CBlock* pblock : vNewBlock)
                     delete pblock;
                 vNewBlock.clear();
             }
@@ -395,15 +393,16 @@ UniValue getwork(const UniValue& params, bool fHelp)
             // Clear pindexPrev so future getworks make a new block, despite any failures from here on
             pindexPrev = NULL;
 
-            // Store the pindexBest used before CreateNewBlock, to avoid races
+            // Store the chainActive.Tip() used before CreateNewBlock, to avoid races
             nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
-            CBlockIndex* pindexPrevNew = pindexBest;
+            CBlockIndex* pindexPrevNew = chainActive.Tip();
             nStart = GetTime();
 
             // Create new block
-            pblock = CreateNewBlock(*pMiningKey);
-            if (!pblock)
-                throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
+            std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, pwalletMain));
+            if (!pblocktemplate.get())
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
+            pblock = &pblocktemplate->block;
             vNewBlock.push_back(pblock);
 
             // Need to update only after we know CreateNewBlock succeeded
@@ -411,7 +410,7 @@ UniValue getwork(const UniValue& params, bool fHelp)
         }
 
         // Update nTime
-        pblock->UpdateTime(pindexPrev);
+        UpdateTime(pblock, pindexPrev, false);
         pblock->nNonce = 0;
 
         // Update nExtraNonce
@@ -427,19 +426,20 @@ UniValue getwork(const UniValue& params, bool fHelp)
         char phash1[64];
         FormatHashBuffers(pblock, pmidstate, pdata, phash1);
 
-        uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
+        bool fNegative;
+        bool fOverflow;
+        uint256 hashTarget;
+        hashTarget.SetCompact(pblock->nBits, &fNegative, &fOverflow);
 
-        Object result;
+        UniValue result(UniValue::VOBJ);
         result.push_back(Pair("midstate", HexStr(BEGIN(pmidstate), END(pmidstate)))); // deprecated
         result.push_back(Pair("data",     HexStr(BEGIN(pdata), END(pdata))));
         result.push_back(Pair("hash1",    HexStr(BEGIN(phash1), END(phash1)))); // deprecated
         result.push_back(Pair("target",   HexStr(BEGIN(hashTarget), END(hashTarget))));
         return result;
-    }
-    else
-    {
+    } else {
         // Parse parameters
-        vector<unsigned char> vchData = ParseHex(params[0].get_str());
+        std::vector<unsigned char> vchData = ParseHex(params[0].get_str());
         if (vchData.size() != 128)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid parameter");
         CBlock* pdata = (CBlock*)&vchData[0];
@@ -458,8 +458,9 @@ UniValue getwork(const UniValue& params, bool fHelp)
         pblock->vtx[0].vin[0].scriptSig = mapNewBlock[pdata->hashMerkleRoot].second;
         pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 
-        assert(pwalletMain != NULL);
-        return CheckWork(pblock, *pwalletMain, *pMiningKey);
+        /*CValidationState state;
+        return ProcessNewBlock(state, NULL, pblock);*/
+        return CheckProofOfWork(pblock->GetPoWHash(), pblock->nBits);
     }
 }
 
@@ -477,44 +478,43 @@ UniValue getworkex(const UniValue& params, bool fHelp)
     if (IsInitialBlockDownload())
         throw JSONRPCError(RPC_CLIENT_IN_INITIAL_DOWNLOAD, "Simplicity is downloading blocks...");
 
-//    if (pindexBest->nHeight >= Params().LastPOWBlock())
+//    if (chainActive.Tip()->nHeight >= Params().LastPOWBlock())
 //        throw JSONRPCError(RPC_MISC_ERROR, "No more PoW blocks");
 
-    typedef map<uint256, pair<CBlock*, CScript> > mapNewBlock_t;
+    typedef std::map<uint256, std::pair<CBlock*, CScript> > mapNewBlock_t;
     static mapNewBlock_t mapNewBlock;
-    static vector<CBlock*> vNewBlock;
+    static std::vector<CBlock*> vNewBlock;
+    CReserveKey reservekey(pwalletMain);
 
-    if (params.size() == 0)
-    {
+    if (params.size() == 0) {
         // Update block
         static unsigned int nTransactionsUpdatedLast;
         static CBlockIndex* pindexPrev;
         static int64_t nStart;
         static CBlock* pblock;
-        if (pindexPrev != pindexBest ||
-            (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 60))
-        {
-            if (pindexPrev != pindexBest)
-            {
+        if (pindexPrev != chainActive.Tip() ||
+            (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 60)) {
+            if (pindexPrev != chainActive.Tip()) {
                 // Deallocate old blocks since they're obsolete now
                 mapNewBlock.clear();
-                BOOST_FOREACH(CBlock* pblock, vNewBlock)
+                for (CBlock* pblock : vNewBlock)
                     delete pblock;
                 vNewBlock.clear();
             }
             nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
-            pindexPrev = pindexBest;
+            pindexPrev = chainActive.Tip();
             nStart = GetTime();
 
             // Create new block
-            pblock = CreateNewBlock(*pMiningKey);
-            if (!pblock)
-                throw JSONRPCError(RPC_OUT_OF_MEMORY, "Out of memory");
+            std::unique_ptr<CBlockTemplate> pblocktemplate(CreateNewBlockWithKey(reservekey, pwalletMain));
+            if (!pblocktemplate.get())
+                throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
+            pblock = &pblocktemplate->block;
             vNewBlock.push_back(pblock);
         }
 
         // Update nTime
-        pblock->nTime = max(pindexPrev->GetPastTimeLimit()+1, GetAdjustedTime());
+        UpdateTime(pblock, pindexPrev, false);
         pblock->nNonce = 0;
 
         // Update nExtraNonce
@@ -530,12 +530,15 @@ UniValue getworkex(const UniValue& params, bool fHelp)
         char phash1[64];
         FormatHashBuffers(pblock, pmidstate, pdata, phash1);
 
-        uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
+        bool fNegative;
+        bool fOverflow;
+        uint256 hashTarget;
+        hashTarget.SetCompact(pblock->nBits, &fNegative, &fOverflow);
 
         CTransaction coinbaseTx = pblock->vtx[0];
         std::vector<uint256> merkle = pblock->GetMerkleBranch(0);
 
-        Object result;
+        UniValue result(UniValue::VOBJ);
         result.push_back(Pair("data",     HexStr(BEGIN(pdata), END(pdata))));
         result.push_back(Pair("target",   HexStr(BEGIN(hashTarget), END(hashTarget))));
 
@@ -543,22 +546,19 @@ UniValue getworkex(const UniValue& params, bool fHelp)
         ssTx << coinbaseTx;
         result.push_back(Pair("coinbase", HexStr(ssTx.begin(), ssTx.end())));
 
-        Array merkle_arr;
+        UniValue merkle_arr(UniValue::VARR);
 
-        BOOST_FOREACH(uint256 merkleh, merkle) {
+        for (uint256 merkleh : merkle) {
             merkle_arr.push_back(HexStr(BEGIN(merkleh), END(merkleh)));
         }
 
         result.push_back(Pair("merkle", merkle_arr));
 
-
         return result;
-    }
-    else
-    {
+    } else {
         // Parse parameters
-        vector<unsigned char> vchData = ParseHex(params[0].get_str());
-        vector<unsigned char> coinbase;
+        std::vector<unsigned char> vchData = ParseHex(params[0].get_str());
+        std::vector<unsigned char> coinbase;
 
         if(params.size() == 2)
             coinbase = ParseHex(params[1].get_str());
@@ -587,8 +587,9 @@ UniValue getworkex(const UniValue& params, bool fHelp)
 
         pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 
-        assert(pwalletMain != NULL);
-        return CheckWork(pblock, *pwalletMain, *pMiningKey);
+        /*CValidationState state;
+        return ProcessNewBlock(state, NULL, pblock);*/
+        return CheckProofOfWork(pblock->GetPoWHash(), pblock->nBits);
     }
 }
 
