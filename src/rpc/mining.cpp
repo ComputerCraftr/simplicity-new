@@ -348,7 +348,7 @@ static UniValue BIP22ValidationResult(const CValidationState& state)
     return "valid?";
 }
 
-UniValue getwork(const UniValue& params, bool fHelp)
+/*UniValue getwork(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 1)
         throw std::runtime_error(
@@ -458,13 +458,13 @@ UniValue getwork(const UniValue& params, bool fHelp)
         pblock->vtx[0].vin[0].scriptSig = mapNewBlock[pdata->hashMerkleRoot].second;
         pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 
-        /*CValidationState state;
-        return ProcessNewBlock(state, NULL, pblock);*/
+        //CValidationState state;
+        //return ProcessNewBlock(state, NULL, pblock);
         return CheckProofOfWork(pblock->GetPoWHash(), pblock->nBits);
     }
-}
+}*/
 
-UniValue getworkex(const UniValue& params, bool fHelp)
+/*UniValue getworkex(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() > 2)
         throw std::runtime_error(
@@ -587,11 +587,11 @@ UniValue getworkex(const UniValue& params, bool fHelp)
 
         pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 
-        /*CValidationState state;
-        return ProcessNewBlock(state, NULL, pblock);*/
+        //CValidationState state;
+        //return ProcessNewBlock(state, NULL, pblock);
         return CheckProofOfWork(pblock->GetPoWHash(), pblock->nBits);
     }
-}
+}*/
 
 UniValue getblocktemplate(const UniValue& params, bool fHelp)
 {

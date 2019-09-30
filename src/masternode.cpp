@@ -313,9 +313,9 @@ int64_t CMasternode::GetLastPaid()
     return 0;
 }
 
-/*std::string CMasternode::GetStatus()
+std::string CMasternode::GetStatus()
 {
-    switch (nActiveState) {
+    switch (activeState) {
     case CMasternode::MASTERNODE_PRE_ENABLED:
         return "PRE_ENABLED";
     case CMasternode::MASTERNODE_ENABLED:
@@ -335,7 +335,7 @@ int64_t CMasternode::GetLastPaid()
     default:
         return "UNKNOWN";
     }
-}*/
+}
 
 bool CMasternode::IsValidNetAddr()
 {

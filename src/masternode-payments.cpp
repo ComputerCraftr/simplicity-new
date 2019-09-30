@@ -447,7 +447,7 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
 
         CMasternode* winner_mn;
 
-        // If the payeeVin is empty mean that winner object come from an old version, so I use the old logic
+        // If the payeeVin is empty the winner object came from an old version, so we use the old logic
         if (winner.payeeVin == CTxIn()) {
             winner_mn = mnodeman.Find(winner.payee);
 
@@ -463,11 +463,11 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
         if (!winner_mn) {
             LogPrint("mnpayments", "mnw - unknown payee from peer=%s ip=%s - %s\n", pfrom->GetId(), pfrom->addr.ToString().c_str(), payee_addr.ToString().c_str());
 
-            // Ban after 50 times times
+            // Ban after 50 unrecognized payee addresses
             Misbehaving(pfrom->GetId(), 2);
 
-            // If I received an unknown payee I try to ask to the peer the updaded version of the masternode list
-            // however the DsegUpdate function do that only 1 time every 3h
+            // Try to find the missing masternode
+            // however DsegUpdate only asks once every 3h
             if (winner.payeeVin == CTxIn())
                 mnodeman.DsegUpdate(pfrom);
             else
