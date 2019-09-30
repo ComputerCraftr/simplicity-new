@@ -427,25 +427,7 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
 
     if (fLiteMode) return; //disable all Obfuscation/Masternode related functionality
 
-    if (strCommand == "mnget") { //Masternode Payments Request Sync
-        if (fLiteMode) return;   //disable all Obfuscation/Masternode related functionality
-
-        int nCountNeeded;
-        vRecv >> nCountNeeded;
-
-        if (Params().NetworkID() == CBaseChainParams::MAIN) {
-            if (pfrom->HasFulfilledRequest("mnget")) {
-                LogPrintf("CMasternodePayments::ProcessMessageMasternodePayments() : mnget - peer=%i ip=%s already asked me for the list\n", pfrom->GetId(), pfrom->addr.ToString().c_str());
-                Misbehaving(pfrom->GetId(), 20);
-                // Still respond to the request
-                //return;
-            }
-        }
-
-        pfrom->FulfilledRequest("mnget");
-        masternodePayments.Sync(pfrom, nCountNeeded);
-        LogPrint("mnpayments", "mnget - Sent Masternode winners to peer %i\n", pfrom->GetId());
-    } else if (strCommand == "mnw") { //Masternode Payments Declare Winner
+    if (strCommand == "mnw") { //Masternode Payments Declare Winner
         //this is required in litemode
         CMasternodePaymentWinner winner;
         vRecv >> winner;
@@ -481,23 +463,39 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
         if (!winner_mn) {
             LogPrint("mnpayments", "mnw - unknown payee from peer=%s ip=%s - %s\n", pfrom->GetId(), pfrom->addr.ToString().c_str(), payee_addr.ToString().c_str());
 
+            // Ban after 50 times times
+            Misbehaving(pfrom->GetId(), 2);
+
             // If I received an unknown payee I try to ask to the peer the updaded version of the masternode list
             // however the DsegUpdate function do that only 1 time every 3h
-            mnodeman.DsegUpdate(pfrom);
+            if (winner.payeeVin == CTxIn())
+                mnodeman.DsegUpdate(pfrom);
+            else
+                mnodeman.AskForMN(pfrom, winner.payeeVin);
+
             return;
         }
 
-        winner.payeeLevel = winner_mn->Level();
+        std::string logString = strprintf("mnw - peer=%s ip=%s v=%d addr=%s winHeight=%d vin=%s",
+            pfrom->GetId(),
+            pfrom->addr.ToString().c_str(),
+            pfrom->nVersion,
+            payee_addr.ToString().c_str(),
+            winner.nBlockHeight,
+            winner.vinMasternode.prevout.ToStringShort() );
 
         if (masternodePayments.mapMasternodePayeeVotes.count(winner.GetHash())) {
-            LogPrint("mnpayments", "mnw - Already seen from peer=%s ip=%s - %s bestHeight %d\n", pfrom->GetId(), pfrom->addr.ToString().c_str(), winner.GetHash().ToString().c_str(), nHeight);
+            LogPrint("mnpayments", "%s - already seen\n", logString.c_str());
             masternodeSync.AddedMasternodeWinner(winner.GetHash());
             return;
         }
 
         int nFirstBlock = nHeight - (mnodeman.CountEnabled(winner.payeeLevel) * 1.25);
         if (winner.nBlockHeight < nFirstBlock || winner.nBlockHeight > nHeight + 20) {
-            LogPrint("mnpayments", "mnw - winner out of range from peer=%s ip=%s - FirstBlock %d Height %d bestHeight %d\n", pfrom->GetId(), pfrom->addr.ToString().c_str(), nFirstBlock, winner.nBlockHeight, nHeight);
+            LogPrint("mnpayments", "%s - out of range\n", logString.c_str());
+
+            // Ban after 20 times
+            Misbehaving(pfrom->GetId(), 5);
             return;
         }
 
@@ -508,13 +506,18 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
         }
 
         if (!masternodePayments.CanVote(winner.vinMasternode.prevout, winner.nBlockHeight, winner.payeeLevel)) {
-            LogPrint("mnpayments", "mnw - masternode already voted from peer=%s ip=%s - %s\n", pfrom->GetId(), pfrom->addr.ToString().c_str(), winner.vinMasternode.prevout.ToStringShort());
+            LogPrint("mnpayments", "%s - already voted\n", logString.c_str());
+
+            // Ban after 5 times
+            Misbehaving(pfrom->GetId(), 20);
             return;
         }
 
         if (!winner.SignatureValid()) {
             if (masternodeSync.IsSynced()) {
                 LogPrintf("CMasternodePayments::ProcessMessageMasternodePayments() : mnw - invalid signature from peer=%s ip=%s\n", pfrom->GetId(), pfrom->addr.ToString().c_str());
+
+                // Ban after 5 times
                 Misbehaving(pfrom->GetId(), 20);
             }
             // it could just be a non-synced masternode
@@ -522,7 +525,7 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
             return;
         }
 
-        LogPrint("mnpayments", "mnw - winning vote from peer=%s ip=%s v=%s - Addr %s Height %d bestHeight %d - %s\n", pfrom->GetId(), pfrom->addr.ToString().c_str(), pfrom->nVersion, payee_addr.ToString().c_str(), winner.nBlockHeight, nHeight, winner.vinMasternode.prevout.ToStringShort());
+        LogPrint("mnpayments", "%s - winning vote\n", logString.c_str());
 
         if (masternodePayments.AddWinningMasternode(winner)) {
             winner.Relay();
@@ -789,6 +792,9 @@ bool CMasternodePaymentWinner::IsValid(CNode* pnode, std::string& strError)
         strError = strprintf("Unknown Masternode %s", vinMasternode.prevout.hash.ToString());
         LogPrint("masternode","CMasternodePaymentWinner::IsValid - %s\n", strError);
         mnodeman.AskForMN(pnode, vinMasternode);
+
+        // Ban after 5 times
+        Misbehaving(pnode->GetId(), 20);
         return false;
     }
 

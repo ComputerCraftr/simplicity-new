@@ -1,5 +1,6 @@
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2017-2018 The XDNA Core developers
 // Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
@@ -333,6 +334,26 @@ void CMasternodeMan::CheckAndRemove(bool forceExpiredRemoval)
         }
     }
 
+    // check who's asked for the winner Masternode list
+    std::map<CNetAddr, int64_t>::iterator it5 = mAskedUsForWinnerMasternodeList.begin();
+    while (it5 != mAskedUsForWinnerMasternodeList.end()) {
+        if ((*it5).second < GetTime()) {
+            mAskedUsForWinnerMasternodeList.erase(it5++);
+        } else {
+            ++it5;
+        }
+    }
+
+    // check who we asked for the wineer Masternode list
+    it5 = mWeAskedForWinnerMasternodeList.begin();
+    while (it5 != mWeAskedForWinnerMasternodeList.end()) {
+        if ((*it5).second < GetTime()) {
+            mWeAskedForWinnerMasternodeList.erase(it5++);
+        } else {
+            ++it5;
+        }
+    }
+
     // remove expired mapSeenMasternodeBroadcast
     std::map<uint256, CMasternodeBroadcast>::iterator it3 = mapSeenMasternodeBroadcast.begin();
     while (it3 != mapSeenMasternodeBroadcast.end()) {
@@ -362,6 +383,8 @@ void CMasternodeMan::Clear()
     mAskedUsForMasternodeList.clear();
     mWeAskedForMasternodeList.clear();
     mWeAskedForMasternodeListEntry.clear();
+    mAskedUsForWinnerMasternodeList.clear();
+    mWeAskedForWinnerMasternodeList.clear();
     mapSeenMasternodeBroadcast.clear();
     mapSeenMasternodePing.clear();
     nDsqCount = 0;
@@ -499,6 +522,28 @@ bool CMasternodeMan::DsegUpdate(CNode* pnode)
     pnode->PushMessage("dseg", CTxIn());
     int64_t askAgain = GetTime() + MASTERNODES_DSEG_SECONDS;
     mWeAskedForMasternodeList[pnode->addr] = askAgain;
+    return true;
+}
+
+bool CMasternodeMan::WinnersUpdate(CNode* node)
+{
+    LOCK(cs);
+
+    if (Params().NetworkID() == CBaseChainParams::MAIN) {
+        if (!(node->addr.IsRFC1918() || node->addr.IsLocal())) {
+            std::map<CNetAddr, int64_t>::iterator it = mWeAskedForWinnerMasternodeList.find(node->addr);
+            if (it != mWeAskedForWinnerMasternodeList.end()) {
+                if (GetTime() < (*it).second) {
+                    LogPrint("masternode", "mnget - we already asked peer=%i ip=%s for the winners list; skipping...\n", node->GetId(), node->addr.ToString().c_str());
+                    return false;
+                }
+            }
+        }
+    }
+
+    node->PushMessage("mnget", CountEnabled());
+    int64_t askAgain = GetTime() + MASTERNODES_DSEG_SECONDS;
+    mWeAskedForWinnerMasternodeList[node->addr] = askAgain;
     return true;
 }
 
@@ -1160,12 +1205,36 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
             int nDoS = 0;
             if (state.IsInvalid(nDoS)) {
-                LogPrint("masternode","dsee - %s from %i %s was not accepted into the memory pool\n", tx.GetHash().ToString().c_str(),
-                    pfrom->GetId(), pfrom->cleanSubVer.c_str());
+                LogPrint("masternode","dsee - %s from %i %s was not accepted into the memory pool\n", tx.GetHash().ToString().c_str(), pfrom->GetId(), pfrom->cleanSubVer.c_str());
                 if (nDoS > 0)
                     Misbehaving(pfrom->GetId(), nDoS);
             }
         }
+    }
+
+    else if (strCommand == "mnget") { //Get winning Masternode list
+        if (fLiteMode) return; //disable all Obfuscation/Masternode related functionality
+        int nCountNeeded;
+        vRecv >> nCountNeeded;
+
+        bool isLocal = (pfrom->addr.IsRFC1918() || pfrom->addr.IsLocal());
+
+        if (!isLocal && Params().NetworkID() == CBaseChainParams::MAIN) {
+            std::map<CNetAddr, int64_t>::iterator i = mAskedUsForWinnerMasternodeList.find(pfrom->addr);
+            if (i != mAskedUsForWinnerMasternodeList.end()) {
+                int64_t t = (*i).second;
+                if (GetTime() < t) {
+                    Misbehaving(pfrom->GetId(), 34);
+                    LogPrintf("mnget - peer=%i ip=%s already asked me for the list\n", pfrom->GetId(), pfrom->addr.ToString().c_str());
+                    return;
+                }
+            }
+            int64_t askAgain = GetTime() + MASTERNODES_DSEG_SECONDS;
+            mAskedUsForWinnerMasternodeList[pfrom->addr] = askAgain;
+        }
+
+        masternodePayments.Sync(pfrom, nCountNeeded);
+        LogPrint("mnpayments", "mnget - Sent Masternode winners to peer=%i ip=%s\n", pfrom->GetId(), pfrom->addr.ToString().c_str());
     }
 
     else if (strCommand == "dseep") { //ObfuScation Election Entry Ping
