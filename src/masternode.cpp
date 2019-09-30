@@ -77,7 +77,6 @@ CMasternode::CMasternode()
     cacheInputAgeBlock = 0;
     unitTest = false;
     allowFreeTx = true;
-    nActiveState = MASTERNODE_ENABLED,
     protocolVersion = PROTOCOL_VERSION;
     nLastDsq = 0;
     nScanningErrorCount = 0;
@@ -103,7 +102,6 @@ CMasternode::CMasternode(const CMasternode& other)
     cacheInputAgeBlock = other.cacheInputAgeBlock;
     unitTest = other.unitTest;
     allowFreeTx = other.allowFreeTx;
-    nActiveState = MASTERNODE_ENABLED,
     protocolVersion = other.protocolVersion;
     nLastDsq = other.nLastDsq;
     nScanningErrorCount = other.nScanningErrorCount;
@@ -122,10 +120,9 @@ CMasternode::CMasternode(const CMasternodeBroadcast& mnb)
     pubKeyMasternode = mnb.pubKeyMasternode;
     sig = mnb.sig;
 
-    if (IsDepositCoins(mnb.vin, deposit))
+    if (IsDepositCoins(mnb.vin, deposit)) {
         activeState = MASTERNODE_ENABLED;
-    else
-    {
+    } else {
         deposit = 0u;
         activeState = MASTERNODE_REMOVE;
     }
@@ -301,7 +298,7 @@ int64_t CMasternode::GetLastPaid()
                 Search for this payee, with at least 2 votes. This will aid in consensus allowing the network
                 to converge on the same payees quickly, then keep the same schedule.
             */
-            if (masternodePayments.mapMasternodeBlocks[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, 2)) {
+            if (masternodePayments.mapMasternodeBlocks[BlockReading->nHeight].HasPayeeWithVotes(mnpayee, vin, 2)) {
                 return BlockReading->nTime + nOffset;
             }
         }
@@ -316,7 +313,7 @@ int64_t CMasternode::GetLastPaid()
     return 0;
 }
 
-std::string CMasternode::GetStatus()
+/*std::string CMasternode::GetStatus()
 {
     switch (nActiveState) {
     case CMasternode::MASTERNODE_PRE_ENABLED:
@@ -338,7 +335,7 @@ std::string CMasternode::GetStatus()
     default:
         return "UNKNOWN";
     }
-}
+}*/
 
 bool CMasternode::IsValidNetAddr()
 {

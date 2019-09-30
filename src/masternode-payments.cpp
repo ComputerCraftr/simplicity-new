@@ -435,9 +435,10 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
 
         if (Params().NetworkID() == CBaseChainParams::MAIN) {
             if (pfrom->HasFulfilledRequest("mnget")) {
-                LogPrintf("CMasternodePayments::ProcessMessageMasternodePayments() : mnget - peer already asked me for the list\n");
+                LogPrintf("CMasternodePayments::ProcessMessageMasternodePayments() : mnget - peer=%i ip=%s already asked me for the list\n", pfrom->GetId(), pfrom->addr.ToString().c_str());
                 Misbehaving(pfrom->GetId(), 20);
-                return;
+                // Still respond to the request
+                //return;
             }
         }
 
@@ -462,10 +463,27 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
         ExtractDestination(winner.payee, address1);
         CBitcoinAddress payee_addr(address1);
 
-        auto winner_mn = mnodeman.Find(winner.payee);
+        CMasternode* winner_mn;
+
+        // If the payeeVin is empty mean that winner object come from an old version, so I use the old logic
+        if (winner.payeeVin == CTxIn()) {
+            winner_mn = mnodeman.Find(winner.payee);
+
+            if (winner_mn != NULL)
+            {
+                winner.payeeLevel = winner_mn->Level();
+                winner.payeeVin = winner_mn->vin;
+            }
+        } else {
+            winner_mn = mnodeman.Find(winner.payeeVin);
+        }
 
         if (!winner_mn) {
-            LogPrint("mnpayments", "mnw - unknown payee from peer=%s ip=%s%s\n", pfrom->GetId(), pfrom->addr.ToString().c_str(), payee_addr.ToString().c_str());
+            LogPrint("mnpayments", "mnw - unknown payee from peer=%s ip=%s - %s\n", pfrom->GetId(), pfrom->addr.ToString().c_str(), payee_addr.ToString().c_str());
+
+            // If I received an unknown payee I try to ask to the peer the updaded version of the masternode list
+            // however the DsegUpdate function do that only 1 time every 3h
+            mnodeman.DsegUpdate(pfrom);
             return;
         }
 
@@ -544,7 +562,7 @@ bool CMasternodePayments::GetBlockPayee(int nBlockHeight, unsigned mnlevel, CScr
 
 // Is this masternode scheduled to get paid soon?
 // -- Only look ahead up to 8 blocks to allow for propagation of the latest 2 winners
-bool CMasternodePayments::IsScheduled(CMasternode& mn, int nSameLevelMNCount, int nNotBlockHeight) const
+bool CMasternodePayments::IsScheduled(CMasternode& mn, int nNotBlockHeight) const
 {
     LOCK(cs_mapMasternodeBlocks);
 
@@ -566,7 +584,7 @@ bool CMasternodePayments::IsScheduled(CMasternode& mn, int nSameLevelMNCount, in
     CScript mnpayee = CScript() << ToByteVector(mn.pubKeyCollateralAddress) << OP_CHECKSIG;
 
     CScript payee;
-    for (int64_t h_upper_bound = nHeight + 10, h = h_upper_bound - std::min(10, nSameLevelMNCount - 1); h < h_upper_bound; ++h) {
+    for (int64_t h = nHeight; h <= nHeight + 8; ++h) {
         if (h == nNotBlockHeight) continue;
         if (mapMasternodeBlocks.count(h)) {
             if (mapMasternodeBlocks.at(h).GetPayee(mn.Level(), payee)) {
@@ -602,7 +620,7 @@ bool CMasternodePayments::AddWinningMasternode(CMasternodePaymentWinner& winnerI
         }
     }
 
-    mapMasternodeBlocks[winnerIn.nBlockHeight].AddPayee(winnerIn.payeeLevel, winnerIn.payee, 1);
+    mapMasternodeBlocks[winnerIn.nBlockHeight].AddPayee(winnerIn.payeeLevel, winnerIn.payee, winnerIn.payeeVin, 1);
 
     return true;
 }
@@ -854,7 +872,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
             CScript payee = CScript() << ToByteVector(pmn->pubKeyCollateralAddress) << OP_CHECKSIG;
 
             newWinner.nBlockHeight = nBlockHeight;
-            newWinner.AddPayee(payee, mnlevel);
+            newWinner.AddPayee(payee, mnlevel, pmn->vin);
 
             CTxDestination address1;
             ExtractDestination(payee, address1);
@@ -890,7 +908,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
 
 void CMasternodePaymentWinner::Relay()
 {
-    LogPrint("mnpayments", "CMasternodePayments::Relay - %s\n", ToString().c_str());
+    //LogPrint("mnpayments", "CMasternodePayments::Relay - %s\n", ToString().c_str());
 
     CInv inv(MSG_MASTERNODE_WINNER, GetHash());
     RelayInv(inv);
