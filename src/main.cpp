@@ -1391,8 +1391,8 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
         return state.DoS(10, error("AcceptToMemoryPool : Zerocoin transactions are temporarily disabled for maintenance"), REJECT_INVALID, "bad-tx");
 
     int chainHeight = chainActive.Height();
-    if (chainHeight < Params().Zerocoin_Block_V2_Start() && !IsInitialBlockDownload() && tx.ContainsZerocoins())
-        return state.DoS(10, error("AcceptToMemoryPool : Zerocoin protocol is not yet active"), REJECT_INVALID, "bad-tx");
+    if ((Params().NetworkID() != CBaseChainParams::REGTEST || (chainHeight < Params().Zerocoin_Block_V2_Start() && !IsInitialBlockDownload())) && tx.ContainsZerocoins())
+        return state.DoS(10, error("AcceptToMemoryPool : Zerocoin protocol is not active"), REJECT_INVALID, "bad-tx");
 
     if (!CheckTransaction(tx, chainHeight >= Params().Zerocoin_StartHeight(), true, state))
         return state.DoS(100, error("AcceptToMemoryPool : CheckTransaction failed"), REJECT_INVALID, "bad-tx");
@@ -3021,8 +3021,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             return state.DoS(100, error("ConnectBlock() : zerocoin transactions are currently in maintenance mode"));
         }
 
-        if (pindex->nHeight < Params().Zerocoin_Block_V2_Start() && tx.ContainsZerocoins()) {
-            return state.DoS(100, error("ConnectBlock() : zerocoin protocol is not yet active"));
+        if ((Params().NetworkID() != CBaseChainParams::REGTEST || pindex->nHeight < Params().Zerocoin_Block_V2_Start()) && tx.ContainsZerocoins()) {
+            return state.DoS(100, error("ConnectBlock() : zerocoin protocol is not active"));
         }
 
         if (tx.HasZerocoinSpendInputs()) {

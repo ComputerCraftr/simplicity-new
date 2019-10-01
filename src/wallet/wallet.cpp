@@ -3289,7 +3289,7 @@ void CWallet::CreateAutoMintTransaction(const CAmount& nMintAmount, CCoinControl
 void CWallet::AutoZeromint()
 {
     // Don't bother Autominting if Zerocoin Protocol isn't active
-    if (GetAdjustedTime() > GetSporkValue(SPORK_16_ZEROCOIN_MAINTENANCE_MODE) || chainActive.Height() < Params().Zerocoin_Block_V2_Start()) return;
+    if (Params().NetworkID() != CBaseChainParams::REGTEST || GetAdjustedTime() > GetSporkValue(SPORK_16_ZEROCOIN_MAINTENANCE_MODE) || chainActive.Height() < Params().Zerocoin_Block_V2_Start()) return;
 
     // Wait until blockchain + masternodes are fully synced and wallet is unlocked.
     if (IsInitialBlockDownload() || IsLocked()){
@@ -4578,8 +4578,8 @@ std::string CWallet::MintZerocoin(CAmount nValue, CWalletTx& wtxNew, std::vector
         return _("Insufficient funds");
     }
 
-    if (chainActive.Height() < Params().Zerocoin_Block_V2_Start())
-        return _("Zerocoin protocol is not yet active!");
+    if (Params().NetworkID() != CBaseChainParams::REGTEST || chainActive.Height() < Params().Zerocoin_Block_V2_Start())
+        return _("Zerocoin protocol is not active!");
 
     CReserveKey reservekey(this);
     int64_t nFeeRequired;
