@@ -158,7 +158,7 @@ public:
         nMaxMoneyOut = 21000000000 * COIN;
 
         /** Height or Time Based Activations **/
-        nMandatoryUpgradeBlock = 976000;
+        nMandatoryUpgradeBlock = 1000000;
         nUpgradeBlockVersion = 8; //Block headers must be this version after upgrade block
         nModifierUpdateBlock = -1;
         nZerocoinStartHeight = 2100000000;
@@ -294,7 +294,7 @@ public:
         pchMessageStart[1] = 0xe3;
         pchMessageStart[2] = 0xdc;
         pchMessageStart[3] = 0xc6;
-        vAlertPubKey = ParseHex("027b8f8990b9df426f6d4800ee345ab42d377ea2029dd8638abae427d14a6b255b");
+        vAlertPubKey = ParseHex("03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134");
         nDefaultPort = 21957;
         bnProofOfWorkLimit = ~uint256(0) >> 12;
         nEnforceBlockUpgradeMajority = 3780; // 70%
@@ -325,7 +325,7 @@ public:
         // Public coin spend enforcement
         nPublicZCSpends = nZerocoinStartHeight + 30;
 
-        vTreasuryRewardPubKey="027b8f8990b9df426f6d4800ee345ab42d377ea2029dd8638abae427d14a6b255b";
+        vTreasuryRewardPubKey="03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134";
         nStartTreasuryBlock = 10;
         nTreasuryBlockStep = 20; //24 * 6 * 60 / nTargetSpacing; // Ten times per day
         nMasternodeTiersStartHeight = -1;
@@ -366,8 +366,8 @@ public:
 
         nPoolMaxTransactions = 2;
         nBudgetCycleBlocks = 24 * 6 * 60 / nTargetSpacing; //!< Ten cycles per day on testnet
-        strSporkKey = "027b8f8990b9df426f6d4800ee345ab42d377ea2029dd8638abae427d14a6b255b";
-        strSporkKeyOld = "027b8f8990b9df426f6d4800ee345ab42d377ea2029dd8638abae427d14a6b255b";
+        strSporkKey = "03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134";
+        strSporkKeyOld = "03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134";
         strObfuscationPoolDummyAddress = "y6S5YPwPCXi2oemSRJGitNPwPjcFJfwbED";
         nStartMasternodePayments = 1420837558; //Fri, 09 Jan 2015 21:05:58 GMT
         nBudget_Fee_Confirmations = 3; // Number of confirmations for the finalization fee. We have to make this very short
