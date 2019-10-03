@@ -1095,13 +1095,13 @@ void ThreadSocketHandler()
                     LogPrint("net", "socket no message in first 60 seconds, %d %d from peer=%d ip=%s\n", pnode->nLastRecv != 0, pnode->nLastSend != 0, pnode->GetId(), pnode->addr.ToString().c_str());
                     pnode->fDisconnect = true;
                 } else if (nTime - pnode->nLastSend > TIMEOUT_INTERVAL) {
-                    LogPrintf("socket sending timeout for peer=%s ip=%s: %is\n", pnode->GetId(), pnode->addr.ToString().c_str(), nTime - pnode->nLastSend);
+                    LogPrintf("socket sending timeout for peer=%d ip=%s: %is\n", pnode->GetId(), pnode->addr.ToString().c_str(), nTime - pnode->nLastSend);
                     pnode->fDisconnect = true;
                 } else if (nTime - pnode->nLastRecv > (pnode->nVersion > BIP0031_VERSION ? TIMEOUT_INTERVAL : 90 * 60)) {
-                    LogPrintf("socket receive timeout for peer=%s ip=%s: %is\n", pnode->GetId(), pnode->addr.ToString().c_str(), nTime - pnode->nLastRecv);
+                    LogPrintf("socket receive timeout for peer=%d ip=%s: %is\n", pnode->GetId(), pnode->addr.ToString().c_str(), nTime - pnode->nLastRecv);
                     pnode->fDisconnect = true;
                 } else if (pnode->nPingNonceSent && pnode->nPingUsecStart + TIMEOUT_INTERVAL * 1000000 < GetTimeMicros()) {
-                    LogPrintf("ping timeout for peer=%s ip=%s: %fs\n", pnode->GetId(), pnode->addr.ToString().c_str(), 0.000001 * (GetTimeMicros() - pnode->nPingUsecStart));
+                    LogPrintf("ping timeout for peer=%d ip=%s: %fs\n", pnode->GetId(), pnode->addr.ToString().c_str(), 0.000001 * (GetTimeMicros() - pnode->nPingUsecStart));
                     pnode->fDisconnect = true;
                 }
             }
@@ -1180,7 +1180,7 @@ void ThreadMapPort()
 
                 MilliSleep(20 * 60 * 1000); // Refresh every 20 minutes
             }
-        } catch (boost::thread_interrupted) {
+        } catch (boost::thread_interrupted&) {
             r = UPNP_DeletePortMapping(urls.controlURL, data.first.servicetype, port.c_str(), "TCP", 0);
             LogPrintf("UPNP_DeletePortMapping() returned : %d\n", r);
             freeUPNPDevlist(devlist);
@@ -2156,7 +2156,7 @@ void CNode::EndMessage() UNLOCK_FUNCTION(cs_vSend)
         Fuzz(GetArg("-fuzzmessagestest", 10));
 
     if (ssSend.size() == 0) {
-	    LEAVE_CRITICAL_SECTION(cs_vSend);
+        LEAVE_CRITICAL_SECTION(cs_vSend);
         return;
     }
 

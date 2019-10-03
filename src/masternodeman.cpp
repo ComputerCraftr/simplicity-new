@@ -527,7 +527,8 @@ bool CMasternodeMan::DsegUpdate(CNode* pnode)
 
 bool CMasternodeMan::WinnersUpdate(CNode* node)
 {
-    LOCK(cs);
+    TRY_LOCK(cs, locked);
+    if (!locked) return false;
 
     if (Params().NetworkID() == CBaseChainParams::MAIN) {
         if (!(node->addr.IsRFC1918() || node->addr.IsLocal())) {
@@ -544,6 +545,7 @@ bool CMasternodeMan::WinnersUpdate(CNode* node)
     node->PushMessage("mnget", CountEnabled());
     int64_t askAgain = GetTime() + MASTERNODES_DSEG_SECONDS;
     mWeAskedForWinnerMasternodeList[node->addr] = askAgain;
+
     return true;
 }
 
@@ -962,7 +964,8 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                     int64_t t = (*i).second;
                     if (GetTime() < t) {
                         LogPrintf("CMasternodeMan::ProcessMessage() : dseg - peer already asked me for the list\n");
-                        Misbehaving(pfrom->GetId(), 34);
+                        TRY_LOCK(cs_main, locked);
+                        if (locked) Misbehaving(pfrom->GetId(), 34);
                         return;
                     }
                 }
@@ -978,7 +981,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
             if (mn.addr.IsRFC1918()) continue; //local network
 
             if (mn.IsEnabled()) {
-                LogPrint("masternode", "dseg - Sending Masternode entry - %s \n", mn.vin.prevout.hash.ToString());
+                LogPrint("masternode", "dseg - Sending Masternode entry to peer=%i ip=%s - %s \n", pfrom->GetId(), pfrom->addr.ToString().c_str(), mn.vin.prevout.hash.ToString());
                 if (vin == CTxIn() || vin == mn.vin) {
                     CMasternodeBroadcast mnb = CMasternodeBroadcast(mn);
                     uint256 hash = mnb.GetHash();
@@ -1214,6 +1217,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
     else if (strCommand == "mnget") { //Get winning Masternode list
         if (fLiteMode) return; //disable all Obfuscation/Masternode related functionality
+
         int nCountNeeded;
         vRecv >> nCountNeeded;
 
