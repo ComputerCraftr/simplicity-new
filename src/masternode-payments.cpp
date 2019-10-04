@@ -197,20 +197,22 @@ bool IsBlockValueValid(const CBlock& block, CAmount nExpectedValue, CAmount nMin
     //check if it's valid treasury block
     if (IsTreasuryBlock(nHeight)) {
         const CTransaction& txNew = block.IsProofOfStake() ? block.vtx[1] : block.vtx[0];
-        CScript treasuryPayee = Params().GetTreasuryRewardScriptAtHeight(nHeight);
+        std::map<CScript, int> treasuryPayees = Params().GetTreasuryRewardScriptAtHeight(nHeight);
         //CAmount blockValue = GetBlockValue(nHeight);
-        CAmount treasuryAmount = GetTreasuryAward(nHeight);
+        CAmount treasuryPayment = GetTreasuryAward(nHeight);
 
-        bool bFound = false;
+        int found = 0;
 
-        for (CTxOut out : txNew.vout) {
-            if (out.nValue == treasuryAmount && out.scriptPubKey == treasuryPayee) {
-                bFound = true; //We found our treasury payment, let's end it here.
-                break;
+        for (std::pair<CScript, int> payee : treasuryPayees) {
+            for (CTxOut out : txNew.vout) {
+                if (out.scriptPubKey == payee.first && out.nValue == treasuryPayment * payee.second / 100) {
+                    found++; //We found our treasury payment, let's end it here.
+                    break;
+                }
             }
         }
 
-        if (!bFound) {
+        if (found != (int)treasuryPayees.size()) {
             LogPrint("masternode","Invalid treasury payment detected %s\n", txNew.ToString().c_str());
             if (block.nTime > GetSporkValue(SPORK_17_TREASURY_PAYMENT_ENFORCEMENT)) { //IsSporkActive(SPORK_17_TREASURY_PAYMENT_ENFORCEMENT)
                 return false;

@@ -15,6 +15,7 @@
 #include "masternodeman.h"
 #include "obfuscation.h"
 #include "util.h"
+#include "utilmoneystr.h"
 #include <boost/filesystem.hpp>
 
 CBudgetManager budget;
@@ -594,45 +595,29 @@ void CBudgetManager::FillTreasuryBlockPayee(CMutableTransaction& txNew, CAmount 
     CBlockIndex* pindexPrev = chainActive.Tip();
     if (!pindexPrev) return;
 
-    CScript payee;
     int height = pindexPrev->nHeight + 1;
+    std::map<CScript, int> treasuryPayees = Params().GetTreasuryRewardScriptAtHeight(height);
+    CAmount treasuryPayment = GetTreasuryAward(height);
+    std::string strPayees;
 
-    payee = Params().GetTreasuryRewardScriptAtHeight(height);
-    CAmount treasurePayment = GetTreasuryAward(height);
-
-
-    if (fProofOfStake) {
-        /**For Proof Of Stake vout[0] must be null
-         * Stake reward can be split into many different outputs, so we must
-         * use vout.size() to align with several different cases.
-         * An additional output is appended as the masternode payment
-         */
+    for (std::pair<CScript, int> payee : treasuryPayees) {
         unsigned int i = txNew.vout.size();
         txNew.vout.resize(i + 1);
-        txNew.vout[i].scriptPubKey = payee;
-        txNew.vout[i].nValue = treasurePayment;
+        txNew.vout[i].scriptPubKey = payee.first;
+        txNew.vout[i].nValue = treasuryPayment * payee.second / 100;
 
-        // if (txNew.vout.size() == 4) { //here is a situation: if stake was split, subtraction from the last one may give us negative value, so we have split it
-            //subtract treasury payment from the stake reward
-            // txNew.vout[i - 1].nValue -= treasurePayment/2;
-            // txNew.vout[i - 2].nValue -= treasurePayment/2;
-        // } else {
-            //subtract treasury payment from the stake reward
-            // txNew.vout[i - 1].nValue -= treasurePayment;
-        // }
-    } else {
-        txNew.vout.resize(2);
-        txNew.vout[1].scriptPubKey = payee;
-        txNew.vout[1].nValue = treasurePayment;
-        //miners get the full amount on these blocks
-        txNew.vout[0].nValue = nBlockValue; //- treasurePayment;
+        CTxDestination address1;
+        ExtractDestination(payee.first, address1);
+        if (strPayees == "")
+            strPayees += CBitcoinAddress(address1).ToString() + "=" + FormatMoney(treasuryPayment * payee.second / 100).c_str();
+        else
+            strPayees += ", " + CBitcoinAddress(address1).ToString() + "=" + FormatMoney(treasuryPayment * payee.second / 100).c_str();
     }
 
-    CTxDestination address1;
-    ExtractDestination(payee, address1);
-    CBitcoinAddress address2(address1);
+    if (!fProofOfStake)
+        txNew.vout[0].nValue = nBlockValue;
 
-    LogPrint("mnbudget","CBudgetManager::FillTreasuryBlockPayee - Treasury payment to %s for %lld\n", address2.ToString(), treasurePayment);
+    LogPrint("mnbudget","CBudgetManager::FillTreasuryBlockPayee - Treasury payment to %s\n", strPayees.c_str());
 }
 
 CFinalizedBudget* CBudgetManager::FindFinalizedBudget(uint256 nHash)

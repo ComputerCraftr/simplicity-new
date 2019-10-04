@@ -115,9 +115,10 @@ public:
     int64_t Budget_Fee_Confirmations() const { return nBudget_Fee_Confirmations; }
 
     CBaseChainParams::Network NetworkID() const { return networkID; }
-    std::string vTreasuryRewardPubKey;
-    std::string GetTreasuryRewardPubKeyAtHeight(int height) const;
-    CScript GetTreasuryRewardScriptAtHeight(int height) const;
+    CPubKey vDevFundPubKey1;
+    CPubKey vDevFundPubKey2;
+    std::string vCommunityFundWallet;
+    std::map<CScript, int> GetTreasuryRewardScriptAtHeight(int height) const;
 
     /** Zerocoin **/
     std::string Zerocoin_Modulus() const { return zerocoinModulus; }

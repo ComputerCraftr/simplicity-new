@@ -7,6 +7,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "libzerocoin/Params.h"
+#include "base58.h"
 #include "chainparams.h"
 #include "random.h"
 #include "util.h"
@@ -124,6 +125,19 @@ bool CChainParams::HasStakeMinAgeOrDepth(const int contextHeight, const uint32_t
     return (contextHeight - utxoFromBlockHeight >= nStakeMinDepth);
 }
 
+std::map<CScript, int> CChainParams::GetTreasuryRewardScriptAtHeight(int nHeight) const {
+    std::map<CScript, int> payees;
+    CBitcoinAddress vTreasuryRewardAddress(vCommunityFundWallet);
+    assert(vTreasuryRewardAddress.IsValid());
+
+    payees.emplace(CScript() << ToByteVector(vDevFundPubKey1) << OP_CHECKSIG, 25); //2.5%
+    payees.emplace(CScript() << ToByteVector(vDevFundPubKey2) << OP_CHECKSIG, 25); //2.5%
+    payees.emplace(GetScriptForDestination(vTreasuryRewardAddress.Get()), 50); //5%
+
+    assert(payees.size() == 3);
+    return payees;
+}
+
 class CMainParams : public CChainParams
 {
 public:
@@ -140,15 +154,15 @@ public:
         pchMessageStart[1] = 0x07;
         pchMessageStart[2] = 0x9a;
         pchMessageStart[3] = 0x1e;
-        vAlertPubKey = ParseHex("0000098d3ba6ba6e7423fa5cbd6a89e0a9a5348f88d332b44a5cb1a8b7ed2c1eaa335fc8dc4f012cb8241cc0bdafd6ca70c5f5448916e4e6f511bcd746ed57dc50");
+        vAlertPubKey = ParseHex("03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1");
         nDefaultPort = 11957;
-        bnProofOfWorkLimit = ~uint256(0) >> 1;
+        bnProofOfWorkLimit = ~uint256(0) >> 16;
         nMaxReorganizationDepth = 100;
         nEnforceBlockUpgradeMajority = 6075; // 75%
         nRejectBlockOutdatedMajority = 7695; // 95%
         nToCheckBlockUpgradeMajority = 8100; // Approximate expected amount of blocks in 7 days (1080*7.5)
         nMinerThreads = 0;
-        nTargetTimespan = 20 * 60; // Simplicity: 20 minutes
+        nTargetTimespan = 10 * 60; // Simplicity: 10 minutes
         nTargetSpacing = 80; // Simplicity: 80 seconds
         nMaturity = 50;
         nStakeMinDepth = 200;
@@ -158,7 +172,7 @@ public:
         nMaxMoneyOut = 21000000000 * COIN;
 
         /** Height or Time Based Activations **/
-        nMandatoryUpgradeBlock = 982010;
+        nMandatoryUpgradeBlock = 982030;
         nUpgradeBlockVersion = 8; //Block headers must be this version after upgrade block
         nModifierUpdateBlock = -1;
         nZerocoinStartHeight = 2100000000;
@@ -176,10 +190,14 @@ public:
         // Public coin spend enforcement
         nPublicZCSpends = nZerocoinStartHeight + 30;
 
-        vTreasuryRewardPubKey="XaU63hVi3dPzCcgXMzbFWbqmSCvzcysgnC";
         nStartTreasuryBlock = nMandatoryUpgradeBlock;
         nTreasuryBlockStep = 1 * 24 * 60 * 60 / nTargetSpacing; // Once per day
         nMasternodeTiersStartHeight = nStartTreasuryBlock;
+        vDevFundPubKey1=CPubKey(ParseHex("03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1"));
+        vDevFundPubKey2=CPubKey(ParseHex("03b9dc2f0d817abf63e488b6b1780de1f6226280fc9961e2ab4c3b1e943377ad00"));
+        vCommunityFundWallet="R4VpCXiZJHFRgviU7qs6VFiQBpqg8dqmSs";
+        assert(vDevFundPubKey1.IsFullyValid());
+        assert(vDevFundPubKey2.IsFullyValid());
 
         /**
          * Build the genesis block. Note that the output of the genesis coinbase cannot
@@ -234,8 +252,8 @@ public:
 
         nPoolMaxTransactions = 3;
         nBudgetCycleBlocks = 30 * 24 * 60 * 60 / nTargetSpacing; //!< Amount of blocks in a months period of time (using 1 minutes per) = (60*24*30)
-        strSporkKey = "040F129DE6546FE405995329A887329BED4321325B1A73B0A257423C05C1FCFE9E40EF0678AEF59036A22C42E61DFD29DF7EFB09F56CC73CADF64E05741880E3E7";
-        strSporkKeyOld = "0499A7AF4806FC6DE640D23BC5936C29B77ADF2174B4F45492727F897AE63CF8D27B2F05040606E0D14B547916379FA10716E344E745F880EDC037307186AA25B7";
+        strSporkKey = "03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1";
+        strSporkKeyOld = "03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1";
         strObfuscationPoolDummyAddress = "D87q2gC9j6nNrnzCsg4aY6bHMLsT9nUhEw";
         nStartMasternodePayments = 1403728576; //Wed, 25 Jun 2014 20:36:16 GMT
 
@@ -266,18 +284,6 @@ public:
 
 };
 
-std::string CChainParams::GetTreasuryRewardPubKeyAtHeight(int nHeight) const {
-    return vTreasuryRewardPubKey;
-}
-
-CScript CChainParams::GetTreasuryRewardScriptAtHeight(int nHeight) const {
-    CPubKey pubkey(ParseHex(GetTreasuryRewardPubKeyAtHeight(nHeight)));
-    assert(pubkey.IsFullyValid());
-
-    CScript script = CScript() << ToByteVector(pubkey) << OP_CHECKSIG;
-    return script;
-}
-
 static CMainParams mainParams;
 
 /**
@@ -296,7 +302,7 @@ public:
         pchMessageStart[3] = 0xc6;
         vAlertPubKey = ParseHex("03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134");
         nDefaultPort = 21957;
-        bnProofOfWorkLimit = ~uint256(0) >> 1;
+        bnProofOfWorkLimit = ~uint256(0) >> 12;
         nEnforceBlockUpgradeMajority = 3780; // 70%
         nRejectBlockOutdatedMajority = 4050; // 75%
         nToCheckBlockUpgradeMajority = 5400; // 4 days (1350*4)
@@ -325,10 +331,14 @@ public:
         // Public coin spend enforcement
         nPublicZCSpends = nZerocoinStartHeight + 30;
 
-        vTreasuryRewardPubKey="03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134";
         nStartTreasuryBlock = 10;
         nTreasuryBlockStep = 20; //24 * 6 * 60 / nTargetSpacing; // Ten times per day
         nMasternodeTiersStartHeight = -1;
+        vDevFundPubKey1=CPubKey(ParseHex("03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134"));
+        vDevFundPubKey2=CPubKey(ParseHex("0242044552e508e9379b2fa8a9011aa017ddcc5b54b975100f5f43ebd53de3d194"));
+        vCommunityFundWallet="8r9dZJmXFidaZyXijEtD7LuDB3wThJKiut";
+        assert(vDevFundPubKey1.IsFullyValid());
+        assert(vDevFundPubKey2.IsFullyValid());
 
         //! Modify the testnet genesis block so the timestamp is valid for a later start.
         //genesis.nTime = 1454124731;
