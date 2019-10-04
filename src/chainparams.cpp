@@ -142,7 +142,7 @@ public:
         pchMessageStart[3] = 0x1e;
         vAlertPubKey = ParseHex("0000098d3ba6ba6e7423fa5cbd6a89e0a9a5348f88d332b44a5cb1a8b7ed2c1eaa335fc8dc4f012cb8241cc0bdafd6ca70c5f5448916e4e6f511bcd746ed57dc50");
         nDefaultPort = 11957;
-        bnProofOfWorkLimit = ~uint256(0) >> 16;
+        bnProofOfWorkLimit = ~uint256(0) >> 1;
         nMaxReorganizationDepth = 100;
         nEnforceBlockUpgradeMajority = 6075; // 75%
         nRejectBlockOutdatedMajority = 7695; // 95%
@@ -158,7 +158,7 @@ public:
         nMaxMoneyOut = 21000000000 * COIN;
 
         /** Height or Time Based Activations **/
-        nMandatoryUpgradeBlock = 1000000;
+        nMandatoryUpgradeBlock = 982010;
         nUpgradeBlockVersion = 8; //Block headers must be this version after upgrade block
         nModifierUpdateBlock = -1;
         nZerocoinStartHeight = 2100000000;
@@ -296,7 +296,7 @@ public:
         pchMessageStart[3] = 0xc6;
         vAlertPubKey = ParseHex("03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134");
         nDefaultPort = 21957;
-        bnProofOfWorkLimit = ~uint256(0) >> 12;
+        bnProofOfWorkLimit = ~uint256(0) >> 1;
         nEnforceBlockUpgradeMajority = 3780; // 70%
         nRejectBlockOutdatedMajority = 4050; // 75%
         nToCheckBlockUpgradeMajority = 5400; // 4 days (1350*4)
@@ -307,7 +307,7 @@ public:
         nStakeMinDepth = 100;
         nMasternodeCountDrift = 4;
         nMandatoryUpgradeBlock = -1;
-        nUpgradeBlockVersion = 1;
+        nUpgradeBlockVersion = 8;
         nModifierUpdateBlock = -1; //approx Mon, 17 Apr 2017 04:00:00 GMT
         nMaxMoneyOut = 500000000 * COIN;
         nZerocoinStartHeight = 2100000000;
@@ -407,6 +407,7 @@ public:
         nMaturity = 100;
         nStakeMinDepth = 0;
         nMasternodeCountDrift = 4;
+        nUpgradeBlockVersion = 1;
         nModifierUpdateBlock = -1; //approx Mon, 17 Apr 2017 04:00:00 GMT
         nMaxMoneyOut = 43199500 * COIN;
         nZerocoinStartHeight = 300;

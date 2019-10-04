@@ -43,6 +43,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
 
     if (pindexLast->nHeight >= Params().WALLET_UPGRADE_BLOCK()) {
         uint256 bnTargetLimit = fProofOfStake ? (~uint256(0) >> 20) : Params().ProofOfWorkLimit();
+        return bnTargetLimit.GetCompact();
 
         int64_t nActualSpacing = 0; // difficulty for PoW and PoS are calculated separately
         const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, fProofOfStake);

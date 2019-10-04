@@ -193,7 +193,7 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
 
     // SPL Balance
     CAmount nTotalBalance = balance + unconfirmedBalance;
-    CAmount splAvailableBalance = balance - immatureBalance - nLockedBalance;
+    CAmount splAvailableBalance = balance - nLockedBalance;
     CAmount nUnlockedBalance = nTotalBalance - nLockedBalance;
 
     // SPL Watch-Only Balance

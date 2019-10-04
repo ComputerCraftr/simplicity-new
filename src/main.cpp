@@ -2045,7 +2045,7 @@ int64_t GetBlockValue(int nHeight, bool fProofOfStake, uint64_t nCoinAge)
         if (nCoinAge == uint64_t(0))
             nSubsidy = nRewardCoinYear / 500;
         else if (nHeight >= Params().WALLET_UPGRADE_BLOCK())
-            nSubsidy = nCoinAge * nRewardCoinYear / 365;
+            nSubsidy = nCoinAge * nRewardCoinYear / 365.25;
         else
             nSubsidy = nCoinAge * nRewardCoinYear * 33 / (365 * 33 + 8);
     } else {
