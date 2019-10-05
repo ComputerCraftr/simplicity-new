@@ -90,7 +90,7 @@ int64_t nReserveBalance = 0;
  * We are ~100 times smaller then bitcoin now (2015-06-23), set minRelayTxFee only 10 times higher
  * so it's still 10 times lower comparing to bitcoin.
  */
-CFeeRate minRelayTxFee = CFeeRate(10000);
+CFeeRate minRelayTxFee = CFeeRate(COIN / 10); //CFeeRate(10000);
 
 CTxMemPool mempool(::minRelayTxFee);
 
@@ -3005,6 +3005,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     blockundo.vtxundo.reserve(block.vtx.size() - 1);
     CAmount nValueOut = 0;
     CAmount nValueIn = 0;
+    CAmount nAmountBurned = 0;
     unsigned int nMaxBlockSigOps = MAX_BLOCK_SIGOPS_CURRENT;
     std::vector<uint256> vSpendsInBlock;
     uint256 hashBlock = block.GetHash();
@@ -3073,7 +3074,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
             // Check that zSPL mints are not already known
             if (tx.HasZerocoinMintOutputs()) {
-                for (auto& out : tx.vout) {
+                for (const CTxOut& out : tx.vout) {
                     if (!out.IsZerocoinMint())
                         continue;
 
@@ -3102,7 +3103,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
 
             // Check that zSPL mints are not already known
             if (tx.HasZerocoinMintOutputs()) {
-                for (auto& out : tx.vout) {
+                for (const CTxOut& out : tx.vout) {
                     if (!out.IsZerocoinMint())
                         continue;
 
@@ -3134,6 +3135,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             control.Add(vChecks);
         }
         nValueOut += tx.GetValueOut();
+        for (const CTxOut& out : tx.vout) {
+            if (out.scriptPubKey.IsUnspendable())
+                nAmountBurned += out.nValue;
+        }
 
         CTxUndo undoDummy;
         if (i > 0) {
@@ -3161,6 +3166,8 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     CAmount nMoneySupplyPrev = pindex->pprev ? pindex->pprev->nMoneySupply : 0;
     pindex->nMoneySupply = nMoneySupplyPrev + nValueOut - nValueIn;
     pindex->nMint = pindex->nMoneySupply - nMoneySupplyPrev + nFees;
+    pindex->nMoneySupply -= nAmountBurned;
+    assert(pindex->nMoneySupply >= 0);
 
 //    LogPrintf("XX69----------> ConnectBlock(): nValueOut: %s, nValueIn: %s, nFees: %s, nMint: %s zSPLSpent: %s\n",
 //              FormatMoney(nValueOut), FormatMoney(nValueIn),

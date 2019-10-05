@@ -172,7 +172,7 @@ public:
         nMaxMoneyOut = 21000000000 * COIN;
 
         /** Height or Time Based Activations **/
-        nMandatoryUpgradeBlock = 982030;
+        nMandatoryUpgradeBlock = 1000000;
         nUpgradeBlockVersion = 8; //Block headers must be this version after upgrade block
         nModifierUpdateBlock = -1;
         nZerocoinStartHeight = 2100000000;
