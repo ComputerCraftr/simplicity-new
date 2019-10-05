@@ -273,7 +273,7 @@ int64_t CMasternode::GetLastPaid()
     CBlockIndex* pindexPrev = chainActive.Tip();
     if (pindexPrev == NULL) return false;
 
-    CScript mnpayee = CScript() << ToByteVector(pubKeyCollateralAddress) << OP_CHECKSIG;
+    CScript mnpayee = GetScriptForRawPubKey(pubKeyCollateralAddress);
 
     CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
     ss << vin;
@@ -575,7 +575,7 @@ bool CMasternodeBroadcast::CheckAndUpdate(int& nDos)
     }
 
     CScript addressScript = GetScriptForDestination(pubKeyCollateralAddress.GetID());
-    CScript pubkeyScript = CScript() << ToByteVector(pubKeyCollateralAddress) << OP_CHECKSIG; //compressed
+    CScript pubkeyScript = GetScriptForRawPubKey(pubKeyCollateralAddress); //compressed
 
     if (addressScript.size() != 25 || pubkeyScript.size() != 35) {
         LogPrint("masternode","mnb - pubkey the wrong size\n");
@@ -584,7 +584,7 @@ bool CMasternodeBroadcast::CheckAndUpdate(int& nDos)
     }
 
     CScript addressScript2 = GetScriptForDestination(pubKeyMasternode.GetID());
-    CScript pubkeyScript2 = CScript() << ToByteVector(pubKeyMasternode) << OP_CHECKSIG; //uncompressed
+    CScript pubkeyScript2 = GetScriptForRawPubKey(pubKeyMasternode); //uncompressed
 
     if (addressScript2.size() != 25 || pubkeyScript2.size() != 67) {
         LogPrint("masternode","mnb - pubkey2 the wrong size\n");

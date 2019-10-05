@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2014 The Bitcoin developers
+// Copyright (c) 2009-2015 The Bitcoin Core developers
 // Copyright (c) 2017-2018 The PIVX developers
 // Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT software license, see the accompanying
@@ -27,7 +27,7 @@ public:
     CScriptID(const uint160& in) : uint160(in) {}
 };
 
-static const unsigned int MAX_OP_RETURN_RELAY = 83;      //!< bytes (+1 for OP_RETURN, +2 for the pushdata opcodes)
+static const unsigned int MAX_OP_RETURN_RELAY = 83; //! bytes (+1 for OP_RETURN, +2 for the pushdata opcodes)
 extern unsigned nMaxDatacarrierBytes;
 
 /**
@@ -97,6 +97,7 @@ bool ExtractDestination(const CScript& scriptPubKey, CTxDestination& addressRet)
 bool ExtractDestinations(const CScript& scriptPubKey, txnouttype& typeRet, std::vector<CTxDestination>& addressRet, int& nRequiredRet);
 
 CScript GetScriptForDestination(const CTxDestination& dest);
+CScript GetScriptForRawPubKey(const CPubKey& pubkey);
 CScript GetScriptForMultisig(int nRequired, const std::vector<CPubKey>& keys);
 
 #endif // BITCOIN_SCRIPT_STANDARD_H

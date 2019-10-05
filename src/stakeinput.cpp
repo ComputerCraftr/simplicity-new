@@ -216,7 +216,7 @@ bool CSplStake::CreateTxOuts(CWallet* pwallet, std::vector<CTxOut>& vout, CAmoun
         if (!pwallet->GetKey(keyID, key))
             return false;
 
-        scriptPubKey << key.GetPubKey() << OP_CHECKSIG;
+        scriptPubKey = GetScriptForRawPubKey(key.GetPubKey());
     } else
         scriptPubKey = scriptPubKeyKernel;
 

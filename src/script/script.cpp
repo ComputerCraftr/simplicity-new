@@ -1,11 +1,12 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2014 The Bitcoin developers
+// Copyright (c) 2009-2015 The Bitcoin Core developers
 // Copyright (c) 2017-2019 The PIVX developers
 // Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "script.h"
+
 #include "tinyformat.h"
 #include "utilstrencodings.h"
 
@@ -185,7 +186,7 @@ unsigned int CScript::GetSigOpCount(bool fAccurate) const
             if (fAccurate && lastOpcode >= OP_1 && lastOpcode <= OP_16)
                 n += DecodeOP_N(lastOpcode);
             else
-                n += 20;
+                n += MAX_PUBKEYS_PER_MULTISIG;
         }
         lastOpcode = opcode;
     }

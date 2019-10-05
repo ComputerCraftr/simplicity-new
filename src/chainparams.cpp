@@ -130,8 +130,8 @@ std::map<CScript, int> CChainParams::GetTreasuryRewardScriptAtHeight(int nHeight
     CBitcoinAddress vTreasuryRewardAddress(vCommunityFundWallet);
     assert(vTreasuryRewardAddress.IsValid());
 
-    payees.emplace(CScript() << ToByteVector(vDevFundPubKey1) << OP_CHECKSIG, 25); //2.5%
-    payees.emplace(CScript() << ToByteVector(vDevFundPubKey2) << OP_CHECKSIG, 25); //2.5%
+    payees.emplace(GetScriptForRawPubKey(vDevFundPubKey1), 25); //2.5%
+    payees.emplace(GetScriptForRawPubKey(vDevFundPubKey2), 25); //2.5%
     payees.emplace(GetScriptForDestination(vTreasuryRewardAddress.Get()), 50); //5%
 
     assert(payees.size() == 3);

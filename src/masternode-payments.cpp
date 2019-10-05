@@ -353,7 +353,7 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int64_t nFe
             //no masternode detected
             CMasternode* winningNode = mnodeman.GetCurrentMasterNode(mnlevel, 1);
             if (winningNode) {
-                payee = CScript() << ToByteVector(winningNode->pubKeyCollateralAddress) << OP_CHECKSIG;
+                payee = GetScriptForRawPubKey(winningNode->pubKeyCollateralAddress);
             } else {
                 LogPrint("masternode","CreateNewBlock: Failed to detect masternode level %d to pay\n", mnlevel);
                 hasPayment = false;
@@ -590,7 +590,7 @@ bool CMasternodePayments::IsScheduled(CMasternode& mn, int nNotBlockHeight) cons
         nHeight = chain_tip->nHeight;
     }
 
-    CScript mnpayee = CScript() << ToByteVector(mn.pubKeyCollateralAddress) << OP_CHECKSIG;
+    CScript mnpayee = GetScriptForRawPubKey(mn.pubKeyCollateralAddress);
 
     CScript payee;
     for (int64_t h = nHeight; h <= nHeight + 8; ++h) {
@@ -884,7 +884,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
                 continue;
             }
 
-            CScript payee = CScript() << ToByteVector(pmn->pubKeyCollateralAddress) << OP_CHECKSIG;
+            CScript payee = GetScriptForRawPubKey(pmn->pubKeyCollateralAddress);
 
             newWinner.nBlockHeight = nBlockHeight;
             newWinner.AddPayee(payee, mnlevel, pmn->vin);

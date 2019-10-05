@@ -1,5 +1,5 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
-// Copyright (c) 2009-2014 The Bitcoin developers
+// Copyright (c) 2009-2015 The Bitcoin Core developers
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2016-2019 The PIVX developers
 // Copyright (c) 2018-2019 The Simplicity developers
@@ -8,6 +8,8 @@
 
 #ifndef BITCOIN_SCRIPT_SCRIPT_H
 #define BITCOIN_SCRIPT_SCRIPT_H
+
+#include "crypto/common.h"
 
 #include <assert.h>
 #include <climits>
@@ -21,7 +23,14 @@
 
 typedef std::vector<unsigned char> valtype;
 
+// Maximum number of bytes pushable to the stack
 static const unsigned int MAX_SCRIPT_ELEMENT_SIZE = 520; // bytes
+
+// Maximum number of non-push operations per script
+static const int MAX_OPS_PER_SCRIPT = 500; // default 201
+
+// Maximum number of public keys per multisig
+static const int MAX_PUBKEYS_PER_MULTISIG = 20;
 
 // Threshold for nLockTime: below this value it is interpreted as block number,
 // otherwise as UNIX timestamp.
@@ -158,8 +167,8 @@ enum opcodetype
 
     // expansion
     OP_NOP1 = 0xb0,
-    OP_NOP2 = 0xb1,
-    OP_CHECKLOCKTIMEVERIFY = OP_NOP2,
+    OP_CHECKLOCKTIMEVERIFY = 0xb1,
+    OP_NOP2 = OP_CHECKLOCKTIMEVERIFY,
     OP_NOP3 = 0xb2,
     OP_NOP4 = 0xb3,
     OP_NOP5 = 0xb4,
@@ -214,7 +223,7 @@ public:
     static const size_t nDefaultMaxNumSize = 4;
 
     explicit CScriptNum(const std::vector<unsigned char>& vch, bool fRequireMinimal,
-            const size_t nMaxNumSize = nDefaultMaxNumSize)
+                        const size_t nMaxNumSize = nDefaultMaxNumSize)
     {
         if (vch.size() > nMaxNumSize) {
             throw scriptnum_error("script number overflow");
@@ -420,7 +429,7 @@ public:
     CScript& operator<<(opcodetype opcode)
     {
         if (opcode < 0 || opcode > 0xff)
-            throw std::runtime_error("CScript::operator<<() : invalid opcode");
+            throw std::runtime_error("CScript::operator<<(): invalid opcode");
         insert(end(), (unsigned char)opcode);
         return *this;
     }
