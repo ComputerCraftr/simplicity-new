@@ -189,6 +189,7 @@ AC_ARG_ENABLE([asm],
 
 if test "x$use_asm" = xyes; then
   AC_DEFINE(USE_ASM, 1, [Define this symbol to build in assembly routines])
+  AC_DEFINE(USE_XOP, 1, [Define this symbol to enable optimization])
 fi
 
 AC_ARG_WITH([system-univalue],
