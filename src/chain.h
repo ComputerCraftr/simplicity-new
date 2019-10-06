@@ -164,7 +164,8 @@ public:
     unsigned int nStakeModifierChecksum; // checksum of index; in-memeory only
     COutPoint prevoutStake;
     unsigned int nStakeTime;
-    uint256 hashProofOfStake;
+    //uint256 hashProofOfStake;
+    //uint256 hashProofOfWork;
     int64_t nMint;
     int64_t nMoneySupply;
     uint256 nStakeModifierV2;
@@ -207,6 +208,8 @@ public:
         nStakeModifierChecksum = 0;
         prevoutStake.SetNull();
         nStakeTime = 0;
+        //hashProofOfStake = uint256();
+        //hashProofOfWork = uint256();
 
         nVersion = 0;
         hashMerkleRoot = uint256();
@@ -481,10 +484,13 @@ public:
         if (IsProofOfStake()) {
             READWRITE(prevoutStake);
             READWRITE(nStakeTime);
+            //READWRITE(hashProofOfStake);
+            //const_cast<CDiskBlockIndex*>(this)->hashProofOfWork = uint256();
         } else {
+            //READWRITE(hashProofOfWork);
             const_cast<CDiskBlockIndex*>(this)->prevoutStake.SetNull();
             const_cast<CDiskBlockIndex*>(this)->nStakeTime = 0;
-            const_cast<CDiskBlockIndex*>(this)->hashProofOfStake = uint256();
+            //const_cast<CDiskBlockIndex*>(this)->hashProofOfStake = uint256();
         }
 
         // block header

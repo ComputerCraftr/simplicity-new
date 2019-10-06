@@ -297,6 +297,13 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/rfc6979_hmac_sha256.cpp \
   crypto/hmac_sha512.cpp \
   crypto/scrypt.cpp \
+  crypto/scrypt2.cpp \
+  crypto/scrypt-arm.S \
+  crypto/scrypt-x64.S \
+  crypto/scrypt-x86.S \
+  crypto/sha2-arm.S \
+  crypto/sha2-x64.S \
+  crypto/sha2-x86.S \
   crypto/ripemd160.cpp \
   crypto/aes_helper.c \
   crypto/blake.c \
@@ -312,6 +319,7 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/rfc6979_hmac_sha256.h \
   crypto/hmac_sha512.h \
   crypto/scrypt.h \
+  crypto/scrypt2.h \
   crypto/sha1.h \
   crypto/ripemd160.h \
   crypto/sph_blake.h \

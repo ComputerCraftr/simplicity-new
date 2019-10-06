@@ -62,6 +62,7 @@
 CCriticalSection cs_main;
 
 BlockMap mapBlockIndex;
+//std::map<uint256, uint256> mapProofOfStake;
 std::map<unsigned int, unsigned int> mapHashedBlocks;
 CChain chainActive;
 CBlockIndex* pindexBestHeader = NULL;
@@ -1004,7 +1005,7 @@ bool GetCoinAge(const CTransaction& tx, const unsigned int nTxTime, int nBestHei
     }
 
     uint256 bnCoinDay = bnCentSecond / COIN / (24 * 60 * 60);
-    LogPrintf("coin age bnCoinDay=%s\n", bnCoinDay.ToString().c_str());
+    LogPrint("staking", "coin age bnCoinDay=%s\n", bnCoinDay.ToString().c_str());
     nCoinAge = bnCoinDay.Get64();
     //LogPrintf("nCoinAge=%"PRId64"\n", nCoinAge);
     return true;
@@ -1631,13 +1632,13 @@ bool AcceptToMemoryPool(CTxMemPool& pool, CValidationState& state, const CTransa
         // As zero fee transactions are not going to be accepted in the near future (4.0) and the code will be fully refactored soon.
         // This is just a quick inline towards that goal, the mempool by default will not accept them. Blocking
         // any subsequent network relay.
-        // if ((Params().NetworkID() != CBaseChainParams::REGTEST) &&
-            // nFees == 0 && !tx.HasZerocoinSpendInputs()) {
-            // return error("%s: zero fees not accepted %s, %d > %d",
-                         // __func__,
-                         // hash.ToString(),
-                         // nFees, ::minRelayTxFee.GetFee(nSize) * 10000);
-        // }
+        if ((Params().NetworkID() != CBaseChainParams::REGTEST) &&
+            nFees == 0 && !tx.HasZerocoinSpendInputs()) {
+            return error("%s: zero fees not accepted %s, %d > %d",
+                         __func__,
+                         hash.ToString(),
+                         nFees, ::minRelayTxFee.GetFee(nSize) * 10000);
+        }
 
         // Check against previous transactions
         // This is done last to help prevent CPU exhaustion denial-of-service attacks.
@@ -1992,10 +1993,9 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos)
     }
 
     // Check the header
-    if (block.IsProofOfWork()) {
-        if (!CheckProofOfWork(block.GetPoWHash(), block.nBits))
-            return error("ReadBlockFromDisk : Errors in block header");
-    }
+    // treat PoW and PoS blocks the same - don't waste time on redundant PoW checks that won't catch invalid PoS blocks anyway
+    //if (block.IsProofOfWork() && !CheckProofOfWork(block.GetPoWHash(), block.nBits))
+        //return error("ReadBlockFromDisk : Errors in block header");
 
     return true;
 }
@@ -3959,18 +3959,27 @@ CBlockIndex* AddToBlockIndex(const CBlock& block)
         if (!pindexNew->SetStakeEntropyBit(pindexNew->GetStakeEntropyBit()))
             LogPrintf("AddToBlockIndex() : SetStakeEntropyBit() failed \n");
 
+        // ppcoin: record proof-of-stake hash value
+        /*if (pindexNew->IsProofOfStake()) {
+            if (!mapProofOfStake.count(hash))
+                LogPrintf("AddToBlockIndex() : hashProofOfStake not found in map \n");
+            pindexNew->hashProofOfStake = mapProofOfStake[hash];
+        } else {
+            pindexNew->hashProofOfWork = block.GetPoWHash();
+        }*/
+
         if (!Params().IsStakeModifierV2(pindexNew->nHeight)) {
             uint64_t nStakeModifier = 0;
             bool fGeneratedStakeModifier = false;
             if (!ComputeNextStakeModifier(pindexNew->pprev, nStakeModifier, fGeneratedStakeModifier))
                 LogPrintf("AddToBlockIndex() : ComputeNextStakeModifier() failed \n");
             pindexNew->SetStakeModifier(nStakeModifier, fGeneratedStakeModifier);
-            pindexNew->nStakeModifierChecksum = GetStakeModifierChecksum(pindexNew);
-            if (!CheckStakeModifierCheckpoints(pindexNew->nHeight, pindexNew->nStakeModifierChecksum))
-                LogPrintf("AddToBlockIndex() : Rejected by stake modifier checkpoint height=%d, modifier=%s \n", pindexNew->nHeight, std::to_string(nStakeModifier));
+            // pindexNew->nStakeModifierChecksum = GetStakeModifierChecksum(pindexNew);
+            // if (!CheckStakeModifierCheckpoints(pindexNew->nHeight, pindexNew->nStakeModifierChecksum))
+                // LogPrintf("AddToBlockIndex() : Rejected by stake modifier checkpoint height=%d, modifier=%s \n", pindexNew->nHeight, std::to_string(nStakeModifier));
         } else {
-            // compute v2 stake modifier - todo
-            pindexNew->nStakeModifierV2 = block.vtx.size() ? ComputeStakeModifier(pindexNew->pprev, pindexNew->pprev->IsProofOfStake() ? block.vtx[1].vin[0].prevout.hash : block.vtx[0].vout[0].GetHash()) : uint256();
+            // compute v2 stake modifier
+            pindexNew->nStakeModifierV2 = ComputeStakeModifier(pindexNew->pprev, pindexNew->IsProofOfStake() ? block.vtx[1].vin[0].prevout.hash : block.vtx[0].vout[0].GetHash());
         }
     }
     pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
@@ -4423,7 +4432,7 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
     return true;
 }
 
-bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex** ppindex)
+bool AcceptBlockHeader(const CBlock& block, CValidationState& state, CBlockIndex** ppindex)
 {
     AssertLockHeld(cs_main);
     // Check for duplicate
@@ -4525,6 +4534,10 @@ bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** ppindex, 
 
         if (!stake)
             return error("%s: null stake ptr", __func__);
+
+        // uint256 hash = block.GetHash();
+        // if (!mapProofOfStake.count(hash)) // add to mapProofOfStake
+            // mapProofOfStake.insert(std::make_pair(hash, hashProofOfStake));
     }
 
     if (!AcceptBlockHeader(block, state, &pindex))
@@ -5164,7 +5177,7 @@ bool LoadExternalBlockFile(FILE* fileIn, CDiskBlockPos* dbp)
                     std::pair<std::multimap<uint256, CDiskBlockPos>::iterator, std::multimap<uint256, CDiskBlockPos>::iterator> range = mapBlocksUnknownParent.equal_range(head);
                     while (range.first != range.second) {
                         std::multimap<uint256, CDiskBlockPos>::iterator it = range.first;
-                        if (ReadBlockFromDisk(block, it->second)) {
+                        if (ReadBlockFromDisk(block, it->second)) { // only call to ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos)
                             LogPrintf("%s: Processing out of order child %s of %s\n", __func__, block.GetHash().ToString(),
                                 head.ToString());
                             CValidationState dummy;

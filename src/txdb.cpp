@@ -264,10 +264,14 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                 }
                 pindexNew->prevoutStake = diskindex.prevoutStake;
                 pindexNew->nStakeTime = diskindex.nStakeTime;
-                pindexNew->hashProofOfStake = diskindex.hashProofOfStake;
+                //pindexNew->hashProofOfStake = diskindex.hashProofOfStake;
+                //pindexNew->hashProofOfWork = diskindex.hashProofOfWork;
 
-                if (pindexNew->IsProofOfWork() && !CheckProofOfWork(pindexNew->GetBlockHeader().GetPoWHash(), pindexNew->nBits)) //optimize - todo
-                    return error("LoadBlockIndex() : CheckProofOfWork failed: %s", pindexNew->ToString());
+                // treat PoW and PoS blocks the same - don't waste time on redundant PoW checks that won't catch invalid PoS blocks anyway
+                //if (pindexNew->GetBlockHash() != Params().HashGenesisBlock()) {
+                    //if (pindexNew->IsProofOfWork() && (!CheckProofOfWork(pindexNew->hashProofOfWork, pindexNew->nBits) || pindexNew->hashProofOfWork == uint256()))
+                        //return error("LoadBlockIndex() : CheckProofOfWork failed: %s", pindexNew->ToString());
+                //}
 
                 //populate accumulator checksum map in memory
                 if(pindexNew->nAccumulatorCheckpoint != 0 && pindexNew->nAccumulatorCheckpoint != nPreviousCheckpoint) {

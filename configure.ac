@@ -48,6 +48,7 @@ if test "x${CXXFLAGS+set}" = "xset"; then
 else
   CXXFLAGS_overridden=no
 fi
+AM_PROG_AS
 AC_PROG_CXX
 
 dnl By default, libtool for mingw refuses to link static libs into a dll for
