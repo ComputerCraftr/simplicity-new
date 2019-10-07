@@ -633,8 +633,7 @@ static void scrypt_N_1_1_256_4way(const uint32_t *input,
 static void scrypt_N_1_1_256_3way(const uint32_t *input,
     uint32_t *output, uint32_t *midstate, unsigned char *scratchpad, int N)
 {
-    uint32_t tstate[3 * 8] __attribute__((aligned(64)));
-    uint32_t ostate[3 * 8] __attribute__((aligned(64)));
+    uint32_t tstate[3 * 8] __attribute__((aligned(64))), ostate[3 * 8];
     uint32_t X[3 * 32] __attribute__((aligned(64)));
     uint32_t *V;
 

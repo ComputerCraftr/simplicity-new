@@ -6308,7 +6308,6 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
         for (const CBlock& header : headers) {
             CValidationState state;
             if (pindexLast != NULL && header.hashPrevBlock != pindexLast->GetBlockHash()) {
-                LOCK(cs_main);
                 Misbehaving(pfrom->GetId(), 20);
                 ret = false;
                 strError = "non-continuous headers sequence";
