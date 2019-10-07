@@ -60,7 +60,7 @@ int64_t nStartupTime = GetTime(); //!< Client startup time for use with automint
  * so it's still 10 times lower comparing to bitcoin.
  * Override with -mintxfee
  */
-CFeeRate CWallet::minTxFee = CFeeRate(10000);
+CFeeRate CWallet::minTxFee = CFeeRate(COIN); //CFeeRate(10000);
 
 /** @defgroup mapWallet
  *
