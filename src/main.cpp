@@ -4123,8 +4123,16 @@ bool FindUndoPos(CValidationState& state, int nFile, CDiskBlockPos& pos, unsigne
 
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool fCheckPOW)
 {
+    static int64_t nBlockCheckTime = 0;
+
+    if (nBlockCheckTime == 0) {
+        nBlockCheckTime = GetTime() - (2 * 24 * 60 * 60); // check the past 2 days worth of headers
+        assert(nBlockCheckTime > 0);
+        //LogPrintf("init height = %i\n", chainActive.Tip()->nHeight);
+    }
+
     // Check proof of work matches claimed amount
-    if (fCheckPOW && !CheckProofOfWork(block.GetPoWHash(), block.nBits))
+    if ((fVerifyingBlocks || fReindex || block.nTime >= nBlockCheckTime) && fCheckPOW && !CheckProofOfWork(block.GetPoWHash(), block.nBits))
         return state.DoS(50, error("CheckBlockHeader() : proof of work failed"),
             REJECT_INVALID, "high-hash");
 
