@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2013 pooler@litecoinpool.org
+ * Copyright 2012-2015 pooler@litecoinpool.org
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the Free
@@ -16,6 +16,1430 @@
 #endif
 
 #if defined(__x86_64__)
+
+	.data
+	.p2align 4
+sha256_h:
+	.long 0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a
+	.long 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+
+	.data
+	.p2align 6
+sha256_k:
+	.long 0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5
+	.long 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5
+	.long 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3
+	.long 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174
+	.long 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc
+	.long 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da
+	.long 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7
+	.long 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967
+	.long 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13
+	.long 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85
+	.long 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3
+	.long 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070
+	.long 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5
+	.long 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3
+	.long 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208
+	.long 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+
+bswap_xmm_mask:
+	.long 0x00010203, 0x04050607, 0x08090a0b, 0x0c0d0e0f
+
+
+	.text
+	.p2align 6
+sha256_transform_sse2:
+	pushq	%rbx
+	pushq	%r12
+	pushq	%r13
+	pushq	%r14
+	pushq	%r15
+#if defined(_WIN64) || defined(__CYGWIN__)
+	pushq	%rdi
+	pushq	%rsi
+	subq	$5*16, %rsp
+	movdqa	%xmm6, 1*16(%rsp)
+	movdqa	%xmm7, 2*16(%rsp)
+	movdqa	%xmm8, 3*16(%rsp)
+	movdqa	%xmm9, 4*16(%rsp)
+	movq	%rcx, %rdi
+	movq	%rdx, %rsi
+	movq	%r8, %rdx
+#else
+	subq	$16, %rsp
+#endif
+	
+	movl	0*4(%rdi), %r8d
+	movl	1*4(%rdi), %r9d
+	movl	2*4(%rdi), %r10d
+	movl	3*4(%rdi), %r11d
+	movl	4*4(%rdi), %r12d
+	movl	5*4(%rdi), %r13d
+	movl	6*4(%rdi), %r14d
+	movl	7*4(%rdi), %r15d
+	
+	testq	%rdx, %rdx
+	jnz sha256_transform_sse2_swap
+	
+	movdqu	0*16(%rsi), %xmm0
+	movdqu	1*16(%rsi), %xmm1
+	movdqu	2*16(%rsi), %xmm2
+	movdqu	3*16(%rsi), %xmm3
+	jmp sha256_transform_sse2_core
+	
+sha256_transform_sse2_swap:
+	movdqu	0*16(%rsi), %xmm0
+	movdqu	1*16(%rsi), %xmm1
+	movdqu	2*16(%rsi), %xmm2
+	movdqu	3*16(%rsi), %xmm3
+	pshuflw	$0xb1, %xmm0, %xmm0
+	pshuflw	$0xb1, %xmm1, %xmm1
+	pshuflw	$0xb1, %xmm2, %xmm2
+	pshuflw	$0xb1, %xmm3, %xmm3
+	pshufhw	$0xb1, %xmm0, %xmm0
+	pshufhw	$0xb1, %xmm1, %xmm1
+	pshufhw	$0xb1, %xmm2, %xmm2
+	pshufhw	$0xb1, %xmm3, %xmm3
+	movdqa	%xmm0, %xmm4
+	movdqa	%xmm1, %xmm5
+	movdqa	%xmm2, %xmm6
+	movdqa	%xmm3, %xmm7
+	psrlw	$8, %xmm4
+	psrlw	$8, %xmm5
+	psrlw	$8, %xmm6
+	psrlw	$8, %xmm7
+	psllw	$8, %xmm0
+	psllw	$8, %xmm1
+	psllw	$8, %xmm2
+	psllw	$8, %xmm3
+	pxor	%xmm4, %xmm0
+	pxor	%xmm5, %xmm1
+	pxor	%xmm6, %xmm2
+	pxor	%xmm7, %xmm3
+	
+sha256_transform_sse2_core:
+	leaq	sha256_k(%rip), %rdx
+	movq	$48, %rsi
+	.p2align 4
+sha256_transform_sse2_loop:
+	movdqa	0*16(%rdx), %xmm9
+	paddd	%xmm0, %xmm9
+	movdqa	%xmm9, (%rsp)
+	movdqa	%xmm3, %xmm4
+	movl	%r12d, %eax
+	movdqa	%xmm2, %xmm6
+	rorl	$(25-11), %eax
+	movl	%r8d, %ebx
+	pslldq	$12, %xmm4
+	rorl	$(22-13), %ebx
+	psrldq	$4, %xmm6
+	xorl	%r12d, %eax
+	movl	%r13d, %ecx
+	rorl	$(11-6), %eax
+	pxor	%xmm6, %xmm4
+	movdqa	%xmm1, %xmm5
+	xorl	%r8d, %ebx
+	xorl	%r14d, %ecx
+	xorl	%r12d, %eax
+	paddd	%xmm0, %xmm4
+	movdqa	%xmm0, %xmm7
+	andl	%r12d, %ecx
+	rorl	$(13-2), %ebx
+	xorl	%r8d, %ebx
+	pslldq	$12, %xmm5
+	psrldq	$4, %xmm7
+	rorl	$6, %eax
+	xorl	%r14d, %ecx
+	pxor	%xmm7, %xmm5
+	rorl	$2, %ebx
+	addl	%eax, %ecx
+	addl	(%rsp) , %ecx
+	movdqa	%xmm5, %xmm6
+	movl	%r8d, %eax
+	addl	%ecx, %r15d
+	movl	%r8d, %ecx
+	movdqa	%xmm5, %xmm7
+	orl	%r10d, %eax
+	addl	%r15d, %r11d
+	andl	%r10d, %ecx
+	pslld	$(32-7), %xmm5
+	psrld	$7, %xmm6
+	andl	%r9d, %eax
+	addl	%ebx, %r15d
+	orl	%ecx, %eax
+	por	%xmm6, %xmm5
+	addl	%eax, %r15d
+	
+	movl	%r11d, %eax
+	movdqa	%xmm7, %xmm6
+	movl	%r15d, %ebx
+	rorl	$(25-11), %eax
+	xorl	%r11d, %eax
+	movdqa	%xmm7, %xmm8
+	movl	%r12d, %ecx
+	rorl	$(22-13), %ebx
+	xorl	%r15d, %ebx
+	pslld	$(32-18), %xmm7
+	rorl	$(11-6), %eax
+	xorl	%r13d, %ecx
+	rorl	$(13-2), %ebx
+	psrld	$18, %xmm6
+	xorl	%r11d, %eax
+	andl	%r11d, %ecx
+	rorl	$6, %eax
+	pxor	%xmm7, %xmm5
+	xorl	%r15d, %ebx
+	xorl	%r13d, %ecx
+	psrld	$3, %xmm8
+	addl	%eax, %ecx
+	addl	1*4(%rsp), %ecx
+	rorl	$2, %ebx
+	pxor	%xmm6, %xmm5
+	movl	%r15d, %eax
+	addl	%ecx, %r14d
+	movl	%r15d, %ecx
+	pxor	%xmm8, %xmm5
+	orl	%r9d, %eax
+	addl	%r14d, %r10d
+	andl	%r9d, %ecx
+	pshufd	$0xfa, %xmm3, %xmm6
+	andl	%r8d, %eax
+	addl	%ebx, %r14d
+	paddd	%xmm5, %xmm4
+	orl	%ecx, %eax
+	addl	%eax, %r14d
+	
+	movl	%r10d, %eax
+	movdqa	%xmm6, %xmm7
+	movl	%r14d, %ebx
+	rorl	$(25-11), %eax
+	xorl	%r10d, %eax
+	movdqa	%xmm6, %xmm8
+	rorl	$(22-13), %ebx
+	movl	%r11d, %ecx
+	xorl	%r14d, %ebx
+	psrlq	$17, %xmm6
+	psrlq	$19, %xmm7
+	rorl	$(11-6), %eax
+	xorl	%r12d, %ecx
+	xorl	%r10d, %eax
+	psrld	$10, %xmm8
+	pxor	%xmm7, %xmm6
+	andl	%r10d, %ecx
+	rorl	$(13-2), %ebx
+	xorl	%r14d, %ebx
+	pxor	%xmm6, %xmm8
+	xorl	%r12d, %ecx
+	rorl	$6, %eax
+	addl	%eax, %ecx
+	pshufd	$0x8f, %xmm8, %xmm8
+	rorl	$2, %ebx
+	addl	2*4(%rsp), %ecx
+	movl	%r14d, %eax
+	psrldq	$8, %xmm8
+	addl	%ecx, %r13d
+	movl	%r14d, %ecx
+	orl	%r8d, %eax
+	paddd	%xmm8, %xmm4
+	addl	%r13d, %r9d
+	andl	%r8d, %ecx
+	andl	%r15d, %eax
+	pshufd	$0x50, %xmm4, %xmm6
+	addl	%ebx, %r13d
+	orl	%ecx, %eax
+	addl	%eax, %r13d
+	
+	movdqa	%xmm6, %xmm7
+	movl	%r9d, %eax
+	rorl	$(25-11), %eax
+	movl	%r13d, %ebx
+	movdqa	%xmm6, %xmm0
+	rorl	$(22-13), %ebx
+	xorl	%r9d, %eax
+	movl	%r10d, %ecx
+	psrlq	$17, %xmm6
+	rorl	$(11-6), %eax
+	xorl	%r13d, %ebx
+	xorl	%r11d, %ecx
+	psrlq	$19, %xmm7
+	xorl	%r9d, %eax
+	andl	%r9d, %ecx
+	rorl	$(13-2), %ebx
+	psrld	$10, %xmm0
+	xorl	%r13d, %ebx
+	rorl	$6, %eax
+	pxor	%xmm7, %xmm6
+	xorl	%r11d, %ecx
+	rorl	$2, %ebx
+	addl	%eax, %ecx
+	pxor	%xmm6, %xmm0
+	addl	3*4(%rsp), %ecx
+	movl	%r13d, %eax
+	addl	%ecx, %r12d
+	pshufd	$0xf8, %xmm0, %xmm0
+	movl	%r13d, %ecx
+	orl	%r15d, %eax
+	addl	%r12d, %r8d
+	pslldq	$8, %xmm0
+	andl	%r15d, %ecx
+	andl	%r14d, %eax
+	paddd	%xmm4, %xmm0
+	addl	%ebx, %r12d
+	orl	%ecx, %eax
+	addl	%eax, %r12d
+	movdqa	1*16(%rdx), %xmm9
+	paddd	%xmm1, %xmm9
+	movdqa	%xmm9, (%rsp)
+	movdqa	%xmm0, %xmm4
+	movl	%r8d, %eax
+	movdqa	%xmm3, %xmm6
+	rorl	$(25-11), %eax
+	movl	%r12d, %ebx
+	pslldq	$12, %xmm4
+	rorl	$(22-13), %ebx
+	psrldq	$4, %xmm6
+	xorl	%r8d, %eax
+	movl	%r9d, %ecx
+	rorl	$(11-6), %eax
+	pxor	%xmm6, %xmm4
+	movdqa	%xmm2, %xmm5
+	xorl	%r12d, %ebx
+	xorl	%r10d, %ecx
+	xorl	%r8d, %eax
+	paddd	%xmm1, %xmm4
+	movdqa	%xmm1, %xmm7
+	andl	%r8d, %ecx
+	rorl	$(13-2), %ebx
+	xorl	%r12d, %ebx
+	pslldq	$12, %xmm5
+	psrldq	$4, %xmm7
+	rorl	$6, %eax
+	xorl	%r10d, %ecx
+	pxor	%xmm7, %xmm5
+	rorl	$2, %ebx
+	addl	%eax, %ecx
+	addl	(%rsp) , %ecx
+	movdqa	%xmm5, %xmm6
+	movl	%r12d, %eax
+	addl	%ecx, %r11d
+	movl	%r12d, %ecx
+	movdqa	%xmm5, %xmm7
+	orl	%r14d, %eax
+	addl	%r11d, %r15d
+	andl	%r14d, %ecx
+	pslld	$(32-7), %xmm5
+	psrld	$7, %xmm6
+	andl	%r13d, %eax
+	addl	%ebx, %r11d
+	orl	%ecx, %eax
+	por	%xmm6, %xmm5
+	addl	%eax, %r11d
+	
+	movl	%r15d, %eax
+	movdqa	%xmm7, %xmm6
+	movl	%r11d, %ebx
+	rorl	$(25-11), %eax
+	xorl	%r15d, %eax
+	movdqa	%xmm7, %xmm8
+	movl	%r8d, %ecx
+	rorl	$(22-13), %ebx
+	xorl	%r11d, %ebx
+	pslld	$(32-18), %xmm7
+	rorl	$(11-6), %eax
+	xorl	%r9d, %ecx
+	rorl	$(13-2), %ebx
+	psrld	$18, %xmm6
+	xorl	%r15d, %eax
+	andl	%r15d, %ecx
+	rorl	$6, %eax
+	pxor	%xmm7, %xmm5
+	xorl	%r11d, %ebx
+	xorl	%r9d, %ecx
+	psrld	$3, %xmm8
+	addl	%eax, %ecx
+	addl	1*4(%rsp), %ecx
+	rorl	$2, %ebx
+	pxor	%xmm6, %xmm5
+	movl	%r11d, %eax
+	addl	%ecx, %r10d
+	movl	%r11d, %ecx
+	pxor	%xmm8, %xmm5
+	orl	%r13d, %eax
+	addl	%r10d, %r14d
+	andl	%r13d, %ecx
+	pshufd	$0xfa, %xmm0, %xmm6
+	andl	%r12d, %eax
+	addl	%ebx, %r10d
+	paddd	%xmm5, %xmm4
+	orl	%ecx, %eax
+	addl	%eax, %r10d
+	
+	movl	%r14d, %eax
+	movdqa	%xmm6, %xmm7
+	movl	%r10d, %ebx
+	rorl	$(25-11), %eax
+	xorl	%r14d, %eax
+	movdqa	%xmm6, %xmm8
+	rorl	$(22-13), %ebx
+	movl	%r15d, %ecx
+	xorl	%r10d, %ebx
+	psrlq	$17, %xmm6
+	psrlq	$19, %xmm7
+	rorl	$(11-6), %eax
+	xorl	%r8d, %ecx
+	xorl	%r14d, %eax
+	psrld	$10, %xmm8
+	pxor	%xmm7, %xmm6
+	andl	%r14d, %ecx
+	rorl	$(13-2), %ebx
+	xorl	%r10d, %ebx
+	pxor	%xmm6, %xmm8
+	xorl	%r8d, %ecx
+	rorl	$6, %eax
+	addl	%eax, %ecx
+	pshufd	$0x8f, %xmm8, %xmm8
+	rorl	$2, %ebx
+	addl	2*4(%rsp), %ecx
+	movl	%r10d, %eax
+	psrldq	$8, %xmm8
+	addl	%ecx, %r9d
+	movl	%r10d, %ecx
+	orl	%r12d, %eax
+	paddd	%xmm8, %xmm4
+	addl	%r9d, %r13d
+	andl	%r12d, %ecx
+	andl	%r11d, %eax
+	pshufd	$0x50, %xmm4, %xmm6
+	addl	%ebx, %r9d
+	orl	%ecx, %eax
+	addl	%eax, %r9d
+	
+	movdqa	%xmm6, %xmm7
+	movl	%r13d, %eax
+	rorl	$(25-11), %eax
+	movl	%r9d, %ebx
+	movdqa	%xmm6, %xmm1
+	rorl	$(22-13), %ebx
+	xorl	%r13d, %eax
+	movl	%r14d, %ecx
+	psrlq	$17, %xmm6
+	rorl	$(11-6), %eax
+	xorl	%r9d, %ebx
+	xorl	%r15d, %ecx
+	psrlq	$19, %xmm7
+	xorl	%r13d, %eax
+	andl	%r13d, %ecx
+	rorl	$(13-2), %ebx
+	psrld	$10, %xmm1
+	xorl	%r9d, %ebx
+	rorl	$6, %eax
+	pxor	%xmm7, %xmm6
+	xorl	%r15d, %ecx
+	rorl	$2, %ebx
+	addl	%eax, %ecx
+	pxor	%xmm6, %xmm1
+	addl	3*4(%rsp), %ecx
+	movl	%r9d, %eax
+	addl	%ecx, %r8d
+	pshufd	$0xf8, %xmm1, %xmm1
+	movl	%r9d, %ecx
+	orl	%r11d, %eax
+	addl	%r8d, %r12d
+	pslldq	$8, %xmm1
+	andl	%r11d, %ecx
+	andl	%r10d, %eax
+	paddd	%xmm4, %xmm1
+	addl	%ebx, %r8d
+	orl	%ecx, %eax
+	addl	%eax, %r8d
+	movdqa	2*16(%rdx), %xmm9
+	paddd	%xmm2, %xmm9
+	movdqa	%xmm9, (%rsp)
+	movdqa	%xmm1, %xmm4
+	movl	%r12d, %eax
+	movdqa	%xmm0, %xmm6
+	rorl	$(25-11), %eax
+	movl	%r8d, %ebx
+	pslldq	$12, %xmm4
+	rorl	$(22-13), %ebx
+	psrldq	$4, %xmm6
+	xorl	%r12d, %eax
+	movl	%r13d, %ecx
+	rorl	$(11-6), %eax
+	pxor	%xmm6, %xmm4
+	movdqa	%xmm3, %xmm5
+	xorl	%r8d, %ebx
+	xorl	%r14d, %ecx
+	xorl	%r12d, %eax
+	paddd	%xmm2, %xmm4
+	movdqa	%xmm2, %xmm7
+	andl	%r12d, %ecx
+	rorl	$(13-2), %ebx
+	xorl	%r8d, %ebx
+	pslldq	$12, %xmm5
+	psrldq	$4, %xmm7
+	rorl	$6, %eax
+	xorl	%r14d, %ecx
+	pxor	%xmm7, %xmm5
+	rorl	$2, %ebx
+	addl	%eax, %ecx
+	addl	(%rsp) , %ecx
+	movdqa	%xmm5, %xmm6
+	movl	%r8d, %eax
+	addl	%ecx, %r15d
+	movl	%r8d, %ecx
+	movdqa	%xmm5, %xmm7
+	orl	%r10d, %eax
+	addl	%r15d, %r11d
+	andl	%r10d, %ecx
+	pslld	$(32-7), %xmm5
+	psrld	$7, %xmm6
+	andl	%r9d, %eax
+	addl	%ebx, %r15d
+	orl	%ecx, %eax
+	por	%xmm6, %xmm5
+	addl	%eax, %r15d
+	
+	movl	%r11d, %eax
+	movdqa	%xmm7, %xmm6
+	movl	%r15d, %ebx
+	rorl	$(25-11), %eax
+	xorl	%r11d, %eax
+	movdqa	%xmm7, %xmm8
+	movl	%r12d, %ecx
+	rorl	$(22-13), %ebx
+	xorl	%r15d, %ebx
+	pslld	$(32-18), %xmm7
+	rorl	$(11-6), %eax
+	xorl	%r13d, %ecx
+	rorl	$(13-2), %ebx
+	psrld	$18, %xmm6
+	xorl	%r11d, %eax
+	andl	%r11d, %ecx
+	rorl	$6, %eax
+	pxor	%xmm7, %xmm5
+	xorl	%r15d, %ebx
+	xorl	%r13d, %ecx
+	psrld	$3, %xmm8
+	addl	%eax, %ecx
+	addl	1*4(%rsp), %ecx
+	rorl	$2, %ebx
+	pxor	%xmm6, %xmm5
+	movl	%r15d, %eax
+	addl	%ecx, %r14d
+	movl	%r15d, %ecx
+	pxor	%xmm8, %xmm5
+	orl	%r9d, %eax
+	addl	%r14d, %r10d
+	andl	%r9d, %ecx
+	pshufd	$0xfa, %xmm1, %xmm6
+	andl	%r8d, %eax
+	addl	%ebx, %r14d
+	paddd	%xmm5, %xmm4
+	orl	%ecx, %eax
+	addl	%eax, %r14d
+	
+	movl	%r10d, %eax
+	movdqa	%xmm6, %xmm7
+	movl	%r14d, %ebx
+	rorl	$(25-11), %eax
+	xorl	%r10d, %eax
+	movdqa	%xmm6, %xmm8
+	rorl	$(22-13), %ebx
+	movl	%r11d, %ecx
+	xorl	%r14d, %ebx
+	psrlq	$17, %xmm6
+	psrlq	$19, %xmm7
+	rorl	$(11-6), %eax
+	xorl	%r12d, %ecx
+	xorl	%r10d, %eax
+	psrld	$10, %xmm8
+	pxor	%xmm7, %xmm6
+	andl	%r10d, %ecx
+	rorl	$(13-2), %ebx
+	xorl	%r14d, %ebx
+	pxor	%xmm6, %xmm8
+	xorl	%r12d, %ecx
+	rorl	$6, %eax
+	addl	%eax, %ecx
+	pshufd	$0x8f, %xmm8, %xmm8
+	rorl	$2, %ebx
+	addl	2*4(%rsp), %ecx
+	movl	%r14d, %eax
+	psrldq	$8, %xmm8
+	addl	%ecx, %r13d
+	movl	%r14d, %ecx
+	orl	%r8d, %eax
+	paddd	%xmm8, %xmm4
+	addl	%r13d, %r9d
+	andl	%r8d, %ecx
+	andl	%r15d, %eax
+	pshufd	$0x50, %xmm4, %xmm6
+	addl	%ebx, %r13d
+	orl	%ecx, %eax
+	addl	%eax, %r13d
+	
+	movdqa	%xmm6, %xmm7
+	movl	%r9d, %eax
+	rorl	$(25-11), %eax
+	movl	%r13d, %ebx
+	movdqa	%xmm6, %xmm2
+	rorl	$(22-13), %ebx
+	xorl	%r9d, %eax
+	movl	%r10d, %ecx
+	psrlq	$17, %xmm6
+	rorl	$(11-6), %eax
+	xorl	%r13d, %ebx
+	xorl	%r11d, %ecx
+	psrlq	$19, %xmm7
+	xorl	%r9d, %eax
+	andl	%r9d, %ecx
+	rorl	$(13-2), %ebx
+	psrld	$10, %xmm2
+	xorl	%r13d, %ebx
+	rorl	$6, %eax
+	pxor	%xmm7, %xmm6
+	xorl	%r11d, %ecx
+	rorl	$2, %ebx
+	addl	%eax, %ecx
+	pxor	%xmm6, %xmm2
+	addl	3*4(%rsp), %ecx
+	movl	%r13d, %eax
+	addl	%ecx, %r12d
+	pshufd	$0xf8, %xmm2, %xmm2
+	movl	%r13d, %ecx
+	orl	%r15d, %eax
+	addl	%r12d, %r8d
+	pslldq	$8, %xmm2
+	andl	%r15d, %ecx
+	andl	%r14d, %eax
+	paddd	%xmm4, %xmm2
+	addl	%ebx, %r12d
+	orl	%ecx, %eax
+	addl	%eax, %r12d
+	movdqa	3*16(%rdx), %xmm9
+	paddd	%xmm3, %xmm9
+	movdqa	%xmm9, (%rsp)
+	addq	$4*16, %rdx
+	movdqa	%xmm2, %xmm4
+	movl	%r8d, %eax
+	movdqa	%xmm1, %xmm6
+	rorl	$(25-11), %eax
+	movl	%r12d, %ebx
+	pslldq	$12, %xmm4
+	rorl	$(22-13), %ebx
+	psrldq	$4, %xmm6
+	xorl	%r8d, %eax
+	movl	%r9d, %ecx
+	rorl	$(11-6), %eax
+	pxor	%xmm6, %xmm4
+	movdqa	%xmm0, %xmm5
+	xorl	%r12d, %ebx
+	xorl	%r10d, %ecx
+	xorl	%r8d, %eax
+	paddd	%xmm3, %xmm4
+	movdqa	%xmm3, %xmm7
+	andl	%r8d, %ecx
+	rorl	$(13-2), %ebx
+	xorl	%r12d, %ebx
+	pslldq	$12, %xmm5
+	psrldq	$4, %xmm7
+	rorl	$6, %eax
+	xorl	%r10d, %ecx
+	pxor	%xmm7, %xmm5
+	rorl	$2, %ebx
+	addl	%eax, %ecx
+	addl	(%rsp) , %ecx
+	movdqa	%xmm5, %xmm6
+	movl	%r12d, %eax
+	addl	%ecx, %r11d
+	movl	%r12d, %ecx
+	movdqa	%xmm5, %xmm7
+	orl	%r14d, %eax
+	addl	%r11d, %r15d
+	andl	%r14d, %ecx
+	pslld	$(32-7), %xmm5
+	psrld	$7, %xmm6
+	andl	%r13d, %eax
+	addl	%ebx, %r11d
+	orl	%ecx, %eax
+	por	%xmm6, %xmm5
+	addl	%eax, %r11d
+	
+	movl	%r15d, %eax
+	movdqa	%xmm7, %xmm6
+	movl	%r11d, %ebx
+	rorl	$(25-11), %eax
+	xorl	%r15d, %eax
+	movdqa	%xmm7, %xmm8
+	movl	%r8d, %ecx
+	rorl	$(22-13), %ebx
+	xorl	%r11d, %ebx
+	pslld	$(32-18), %xmm7
+	rorl	$(11-6), %eax
+	xorl	%r9d, %ecx
+	rorl	$(13-2), %ebx
+	psrld	$18, %xmm6
+	xorl	%r15d, %eax
+	andl	%r15d, %ecx
+	rorl	$6, %eax
+	pxor	%xmm7, %xmm5
+	xorl	%r11d, %ebx
+	xorl	%r9d, %ecx
+	psrld	$3, %xmm8
+	addl	%eax, %ecx
+	addl	1*4(%rsp), %ecx
+	rorl	$2, %ebx
+	pxor	%xmm6, %xmm5
+	movl	%r11d, %eax
+	addl	%ecx, %r10d
+	movl	%r11d, %ecx
+	pxor	%xmm8, %xmm5
+	orl	%r13d, %eax
+	addl	%r10d, %r14d
+	andl	%r13d, %ecx
+	pshufd	$0xfa, %xmm2, %xmm6
+	andl	%r12d, %eax
+	addl	%ebx, %r10d
+	paddd	%xmm5, %xmm4
+	orl	%ecx, %eax
+	addl	%eax, %r10d
+	
+	movl	%r14d, %eax
+	movdqa	%xmm6, %xmm7
+	movl	%r10d, %ebx
+	rorl	$(25-11), %eax
+	xorl	%r14d, %eax
+	movdqa	%xmm6, %xmm8
+	rorl	$(22-13), %ebx
+	movl	%r15d, %ecx
+	xorl	%r10d, %ebx
+	psrlq	$17, %xmm6
+	psrlq	$19, %xmm7
+	rorl	$(11-6), %eax
+	xorl	%r8d, %ecx
+	xorl	%r14d, %eax
+	psrld	$10, %xmm8
+	pxor	%xmm7, %xmm6
+	andl	%r14d, %ecx
+	rorl	$(13-2), %ebx
+	xorl	%r10d, %ebx
+	pxor	%xmm6, %xmm8
+	xorl	%r8d, %ecx
+	rorl	$6, %eax
+	addl	%eax, %ecx
+	pshufd	$0x8f, %xmm8, %xmm8
+	rorl	$2, %ebx
+	addl	2*4(%rsp), %ecx
+	movl	%r10d, %eax
+	psrldq	$8, %xmm8
+	addl	%ecx, %r9d
+	movl	%r10d, %ecx
+	orl	%r12d, %eax
+	paddd	%xmm8, %xmm4
+	addl	%r9d, %r13d
+	andl	%r12d, %ecx
+	andl	%r11d, %eax
+	pshufd	$0x50, %xmm4, %xmm6
+	addl	%ebx, %r9d
+	orl	%ecx, %eax
+	addl	%eax, %r9d
+	
+	movdqa	%xmm6, %xmm7
+	movl	%r13d, %eax
+	rorl	$(25-11), %eax
+	movl	%r9d, %ebx
+	movdqa	%xmm6, %xmm3
+	rorl	$(22-13), %ebx
+	xorl	%r13d, %eax
+	movl	%r14d, %ecx
+	psrlq	$17, %xmm6
+	rorl	$(11-6), %eax
+	xorl	%r9d, %ebx
+	xorl	%r15d, %ecx
+	psrlq	$19, %xmm7
+	xorl	%r13d, %eax
+	andl	%r13d, %ecx
+	rorl	$(13-2), %ebx
+	psrld	$10, %xmm3
+	xorl	%r9d, %ebx
+	rorl	$6, %eax
+	pxor	%xmm7, %xmm6
+	xorl	%r15d, %ecx
+	rorl	$2, %ebx
+	addl	%eax, %ecx
+	pxor	%xmm6, %xmm3
+	addl	3*4(%rsp), %ecx
+	movl	%r9d, %eax
+	addl	%ecx, %r8d
+	pshufd	$0xf8, %xmm3, %xmm3
+	movl	%r9d, %ecx
+	orl	%r11d, %eax
+	addl	%r8d, %r12d
+	pslldq	$8, %xmm3
+	andl	%r11d, %ecx
+	andl	%r10d, %eax
+	paddd	%xmm4, %xmm3
+	addl	%ebx, %r8d
+	orl	%ecx, %eax
+	addl	%eax, %r8d
+	
+	subq	$16, %rsi
+	jne sha256_transform_sse2_loop
+	
+	paddd	0*16(%rdx), %xmm0
+	movdqa	%xmm0, (%rsp)
+	movl	%r12d, %eax
+	rorl	$(25-11), %eax
+	movl	%r8d, %ebx
+	xorl	%r12d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r13d, %ecx
+	xorl	%r8d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r14d, %ecx
+	xorl	%r12d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r12d, %ecx
+	xorl	%r8d, %ebx
+	rorl	$6, %eax
+	xorl	%r14d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	0*4(%rsp), %ecx
+	movl	%r8d, %eax
+	addl	%ecx, %r15d
+	movl	%r8d, %ecx
+	orl	%r10d, %eax
+	addl	%r15d, %r11d
+	andl	%r10d, %ecx
+	andl	%r9d, %eax
+	addl	%ebx, %r15d
+	orl	%ecx, %eax
+	addl	%eax, %r15d
+	movl	%r11d, %eax
+	rorl	$(25-11), %eax
+	movl	%r15d, %ebx
+	xorl	%r11d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r12d, %ecx
+	xorl	%r15d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r13d, %ecx
+	xorl	%r11d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r11d, %ecx
+	xorl	%r15d, %ebx
+	rorl	$6, %eax
+	xorl	%r13d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	1*4(%rsp), %ecx
+	movl	%r15d, %eax
+	addl	%ecx, %r14d
+	movl	%r15d, %ecx
+	orl	%r9d, %eax
+	addl	%r14d, %r10d
+	andl	%r9d, %ecx
+	andl	%r8d, %eax
+	addl	%ebx, %r14d
+	orl	%ecx, %eax
+	addl	%eax, %r14d
+	movl	%r10d, %eax
+	rorl	$(25-11), %eax
+	movl	%r14d, %ebx
+	xorl	%r10d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r11d, %ecx
+	xorl	%r14d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r12d, %ecx
+	xorl	%r10d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r10d, %ecx
+	xorl	%r14d, %ebx
+	rorl	$6, %eax
+	xorl	%r12d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	2*4(%rsp), %ecx
+	movl	%r14d, %eax
+	addl	%ecx, %r13d
+	movl	%r14d, %ecx
+	orl	%r8d, %eax
+	addl	%r13d, %r9d
+	andl	%r8d, %ecx
+	andl	%r15d, %eax
+	addl	%ebx, %r13d
+	orl	%ecx, %eax
+	addl	%eax, %r13d
+	movl	%r9d, %eax
+	rorl	$(25-11), %eax
+	movl	%r13d, %ebx
+	xorl	%r9d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r10d, %ecx
+	xorl	%r13d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r11d, %ecx
+	xorl	%r9d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r9d, %ecx
+	xorl	%r13d, %ebx
+	rorl	$6, %eax
+	xorl	%r11d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	3*4(%rsp), %ecx
+	movl	%r13d, %eax
+	addl	%ecx, %r12d
+	movl	%r13d, %ecx
+	orl	%r15d, %eax
+	addl	%r12d, %r8d
+	andl	%r15d, %ecx
+	andl	%r14d, %eax
+	addl	%ebx, %r12d
+	orl	%ecx, %eax
+	addl	%eax, %r12d
+	paddd	1*16(%rdx), %xmm1
+	movdqa	%xmm1, (%rsp)
+	movl	%r8d, %eax
+	rorl	$(25-11), %eax
+	movl	%r12d, %ebx
+	xorl	%r8d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r9d, %ecx
+	xorl	%r12d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r10d, %ecx
+	xorl	%r8d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r8d, %ecx
+	xorl	%r12d, %ebx
+	rorl	$6, %eax
+	xorl	%r10d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	0*4(%rsp), %ecx
+	movl	%r12d, %eax
+	addl	%ecx, %r11d
+	movl	%r12d, %ecx
+	orl	%r14d, %eax
+	addl	%r11d, %r15d
+	andl	%r14d, %ecx
+	andl	%r13d, %eax
+	addl	%ebx, %r11d
+	orl	%ecx, %eax
+	addl	%eax, %r11d
+	movl	%r15d, %eax
+	rorl	$(25-11), %eax
+	movl	%r11d, %ebx
+	xorl	%r15d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r8d, %ecx
+	xorl	%r11d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r9d, %ecx
+	xorl	%r15d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r15d, %ecx
+	xorl	%r11d, %ebx
+	rorl	$6, %eax
+	xorl	%r9d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	1*4(%rsp), %ecx
+	movl	%r11d, %eax
+	addl	%ecx, %r10d
+	movl	%r11d, %ecx
+	orl	%r13d, %eax
+	addl	%r10d, %r14d
+	andl	%r13d, %ecx
+	andl	%r12d, %eax
+	addl	%ebx, %r10d
+	orl	%ecx, %eax
+	addl	%eax, %r10d
+	movl	%r14d, %eax
+	rorl	$(25-11), %eax
+	movl	%r10d, %ebx
+	xorl	%r14d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r15d, %ecx
+	xorl	%r10d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r8d, %ecx
+	xorl	%r14d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r14d, %ecx
+	xorl	%r10d, %ebx
+	rorl	$6, %eax
+	xorl	%r8d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	2*4(%rsp), %ecx
+	movl	%r10d, %eax
+	addl	%ecx, %r9d
+	movl	%r10d, %ecx
+	orl	%r12d, %eax
+	addl	%r9d, %r13d
+	andl	%r12d, %ecx
+	andl	%r11d, %eax
+	addl	%ebx, %r9d
+	orl	%ecx, %eax
+	addl	%eax, %r9d
+	movl	%r13d, %eax
+	rorl	$(25-11), %eax
+	movl	%r9d, %ebx
+	xorl	%r13d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r14d, %ecx
+	xorl	%r9d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r15d, %ecx
+	xorl	%r13d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r13d, %ecx
+	xorl	%r9d, %ebx
+	rorl	$6, %eax
+	xorl	%r15d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	3*4(%rsp), %ecx
+	movl	%r9d, %eax
+	addl	%ecx, %r8d
+	movl	%r9d, %ecx
+	orl	%r11d, %eax
+	addl	%r8d, %r12d
+	andl	%r11d, %ecx
+	andl	%r10d, %eax
+	addl	%ebx, %r8d
+	orl	%ecx, %eax
+	addl	%eax, %r8d
+	paddd	2*16(%rdx), %xmm2
+	movdqa	%xmm2, (%rsp)
+	movl	%r12d, %eax
+	rorl	$(25-11), %eax
+	movl	%r8d, %ebx
+	xorl	%r12d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r13d, %ecx
+	xorl	%r8d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r14d, %ecx
+	xorl	%r12d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r12d, %ecx
+	xorl	%r8d, %ebx
+	rorl	$6, %eax
+	xorl	%r14d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	0*4(%rsp), %ecx
+	movl	%r8d, %eax
+	addl	%ecx, %r15d
+	movl	%r8d, %ecx
+	orl	%r10d, %eax
+	addl	%r15d, %r11d
+	andl	%r10d, %ecx
+	andl	%r9d, %eax
+	addl	%ebx, %r15d
+	orl	%ecx, %eax
+	addl	%eax, %r15d
+	movl	%r11d, %eax
+	rorl	$(25-11), %eax
+	movl	%r15d, %ebx
+	xorl	%r11d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r12d, %ecx
+	xorl	%r15d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r13d, %ecx
+	xorl	%r11d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r11d, %ecx
+	xorl	%r15d, %ebx
+	rorl	$6, %eax
+	xorl	%r13d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	1*4(%rsp), %ecx
+	movl	%r15d, %eax
+	addl	%ecx, %r14d
+	movl	%r15d, %ecx
+	orl	%r9d, %eax
+	addl	%r14d, %r10d
+	andl	%r9d, %ecx
+	andl	%r8d, %eax
+	addl	%ebx, %r14d
+	orl	%ecx, %eax
+	addl	%eax, %r14d
+	movl	%r10d, %eax
+	rorl	$(25-11), %eax
+	movl	%r14d, %ebx
+	xorl	%r10d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r11d, %ecx
+	xorl	%r14d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r12d, %ecx
+	xorl	%r10d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r10d, %ecx
+	xorl	%r14d, %ebx
+	rorl	$6, %eax
+	xorl	%r12d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	2*4(%rsp), %ecx
+	movl	%r14d, %eax
+	addl	%ecx, %r13d
+	movl	%r14d, %ecx
+	orl	%r8d, %eax
+	addl	%r13d, %r9d
+	andl	%r8d, %ecx
+	andl	%r15d, %eax
+	addl	%ebx, %r13d
+	orl	%ecx, %eax
+	addl	%eax, %r13d
+	movl	%r9d, %eax
+	rorl	$(25-11), %eax
+	movl	%r13d, %ebx
+	xorl	%r9d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r10d, %ecx
+	xorl	%r13d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r11d, %ecx
+	xorl	%r9d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r9d, %ecx
+	xorl	%r13d, %ebx
+	rorl	$6, %eax
+	xorl	%r11d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	3*4(%rsp), %ecx
+	movl	%r13d, %eax
+	addl	%ecx, %r12d
+	movl	%r13d, %ecx
+	orl	%r15d, %eax
+	addl	%r12d, %r8d
+	andl	%r15d, %ecx
+	andl	%r14d, %eax
+	addl	%ebx, %r12d
+	orl	%ecx, %eax
+	addl	%eax, %r12d
+	paddd	3*16(%rdx), %xmm3
+	movdqa	%xmm3, (%rsp)
+	movl	%r8d, %eax
+	rorl	$(25-11), %eax
+	movl	%r12d, %ebx
+	xorl	%r8d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r9d, %ecx
+	xorl	%r12d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r10d, %ecx
+	xorl	%r8d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r8d, %ecx
+	xorl	%r12d, %ebx
+	rorl	$6, %eax
+	xorl	%r10d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	0*4(%rsp), %ecx
+	movl	%r12d, %eax
+	addl	%ecx, %r11d
+	movl	%r12d, %ecx
+	orl	%r14d, %eax
+	addl	%r11d, %r15d
+	andl	%r14d, %ecx
+	andl	%r13d, %eax
+	addl	%ebx, %r11d
+	orl	%ecx, %eax
+	addl	%eax, %r11d
+	movl	%r15d, %eax
+	rorl	$(25-11), %eax
+	movl	%r11d, %ebx
+	xorl	%r15d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r8d, %ecx
+	xorl	%r11d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r9d, %ecx
+	xorl	%r15d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r15d, %ecx
+	xorl	%r11d, %ebx
+	rorl	$6, %eax
+	xorl	%r9d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	1*4(%rsp), %ecx
+	movl	%r11d, %eax
+	addl	%ecx, %r10d
+	movl	%r11d, %ecx
+	orl	%r13d, %eax
+	addl	%r10d, %r14d
+	andl	%r13d, %ecx
+	andl	%r12d, %eax
+	addl	%ebx, %r10d
+	orl	%ecx, %eax
+	addl	%eax, %r10d
+	movl	%r14d, %eax
+	rorl	$(25-11), %eax
+	movl	%r10d, %ebx
+	xorl	%r14d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r15d, %ecx
+	xorl	%r10d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r8d, %ecx
+	xorl	%r14d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r14d, %ecx
+	xorl	%r10d, %ebx
+	rorl	$6, %eax
+	xorl	%r8d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	2*4(%rsp), %ecx
+	movl	%r10d, %eax
+	addl	%ecx, %r9d
+	movl	%r10d, %ecx
+	orl	%r12d, %eax
+	addl	%r9d, %r13d
+	andl	%r12d, %ecx
+	andl	%r11d, %eax
+	addl	%ebx, %r9d
+	orl	%ecx, %eax
+	addl	%eax, %r9d
+	movl	%r13d, %eax
+	rorl	$(25-11), %eax
+	movl	%r9d, %ebx
+	xorl	%r13d, %eax
+	rorl	$(22-13), %ebx
+	movl	%r14d, %ecx
+	xorl	%r9d, %ebx
+	rorl	$(11-6), %eax
+	xorl	%r15d, %ecx
+	xorl	%r13d, %eax
+	rorl	$(13-2), %ebx
+	andl	%r13d, %ecx
+	xorl	%r9d, %ebx
+	rorl	$6, %eax
+	xorl	%r15d, %ecx
+	addl	%eax, %ecx
+	rorl	$2, %ebx
+	addl	3*4(%rsp), %ecx
+	movl	%r9d, %eax
+	addl	%ecx, %r8d
+	movl	%r9d, %ecx
+	orl	%r11d, %eax
+	addl	%r8d, %r12d
+	andl	%r11d, %ecx
+	andl	%r10d, %eax
+	addl	%ebx, %r8d
+	orl	%ecx, %eax
+	addl	%eax, %r8d
+	
+	addl	%r8d, 0*4(%rdi)
+	addl	%r9d, 1*4(%rdi)
+	addl	%r10d, 2*4(%rdi)
+	addl	%r11d, 3*4(%rdi)
+	addl	%r12d, 4*4(%rdi)
+	addl	%r13d, 5*4(%rdi)
+	addl	%r14d, 6*4(%rdi)
+	addl	%r15d, 7*4(%rdi)
+	
+#if defined(_WIN64) || defined(__CYGWIN__)
+	movdqa	1*16(%rsp), %xmm6
+	movdqa	2*16(%rsp), %xmm7
+	movdqa	3*16(%rsp), %xmm8
+	movdqa	4*16(%rsp), %xmm9
+	addq	$5*16, %rsp
+	popq	%rsi
+	popq	%rdi
+#else
+	addq	$16, %rsp
+#endif
+	popq	%r15
+	popq	%r14
+	popq	%r13
+	popq	%r12
+	popq	%rbx
+	ret
+
+
+	.text
+	.p2align 6
+sha256_transform_phe:
+#if defined(_WIN64) || defined(__CYGWIN__)
+	pushq	%rdi
+	pushq	%rsi
+	movq	%rcx, %rdi
+	movq	%rdx, %rsi
+	movq	%r8, %rdx
+#endif
+	movq	%rsp, %r8
+	subq	$64, %rsp
+	andq	$-64, %rsp
+	
+	testq	%rdx, %rdx
+	jnz sha256_transform_phe_noswap
+	
+	movl	0*4(%rsi), %eax
+	movl	1*4(%rsi), %ecx
+	movl	2*4(%rsi), %edx
+	movl	3*4(%rsi), %r9d
+	bswapl	%eax
+	bswapl	%ecx
+	bswapl	%edx
+	bswapl	%r9d
+	movl	%eax, 0*4(%rsp)
+	movl	%ecx, 1*4(%rsp)
+	movl	%edx, 2*4(%rsp)
+	movl	%r9d, 3*4(%rsp)
+	movl	4*4(%rsi), %eax
+	movl	5*4(%rsi), %ecx
+	movl	6*4(%rsi), %edx
+	movl	7*4(%rsi), %r9d
+	bswapl	%eax
+	bswapl	%ecx
+	bswapl	%edx
+	bswapl	%r9d
+	movl	%eax, 4*4(%rsp)
+	movl	%ecx, 5*4(%rsp)
+	movl	%edx, 6*4(%rsp)
+	movl	%r9d, 7*4(%rsp)
+	
+	movdqu	2*16(%rsi), %xmm0
+	movdqu	3*16(%rsi), %xmm2
+	pshuflw	$0xb1, %xmm0, %xmm0
+	pshuflw	$0xb1, %xmm2, %xmm2
+	pshufhw	$0xb1, %xmm0, %xmm0
+	pshufhw	$0xb1, %xmm2, %xmm2
+	movdqa	%xmm0, %xmm1
+	movdqa	%xmm2, %xmm3
+	psrlw	$8, %xmm1
+	psrlw	$8, %xmm3
+	psllw	$8, %xmm0
+	psllw	$8, %xmm2
+	pxor	%xmm1, %xmm0
+	pxor	%xmm3, %xmm2
+	movdqa	%xmm0, 2*16(%rsp)
+	movdqa	%xmm2, 3*16(%rsp)
+	
+	jmp sha256_transform_phe_core
+	
+sha256_transform_phe_noswap:
+	movdqu	0*16(%rsi), %xmm0
+	movdqu	1*16(%rsi), %xmm1
+	movdqu	2*16(%rsi), %xmm2
+	movdqu	3*16(%rsi), %xmm3
+	movdqa	%xmm0, 0*16(%rsp)
+	movdqa	%xmm1, 1*16(%rsp)
+	movdqa	%xmm2, 2*16(%rsp)
+	movdqa	%xmm3, 3*16(%rsp)
+	
+sha256_transform_phe_core:
+	movq	%rsp, %rsi
+	movq	$-1, %rax
+	movq	$1, %rcx
+	/* rep xsha256 */
+	.byte 0xf3, 0x0f, 0xa6, 0xd0
+	
+	movq	%r8, %rsp
+#if defined(_WIN64) || defined(__CYGWIN__)
+	popq	%rsi
+	popq	%rdi
+#endif
+	ret
+	
+	
+	.data
+	.p2align 3
+sha256_transform_addr:
+	.quad sha256_transform_sse2
+	
+	.text
+	.p2align 3
+	.globl sha256_transform
+	.globl _sha256_transform
+sha256_transform:
+_sha256_transform:
+	jmp *sha256_transform_addr(%rip)
+
+
+	.text
+	.p2align 6
+	.globl sha256d_ms
+	.globl _sha256d_ms
+sha256d_ms:
+_sha256d_ms:
+#if defined(_WIN64) || defined(__CYGWIN__)
+	pushq	%rdi
+	pushq	%rsi
+	movq	%rcx, %rdi
+	movq	%rdx, %rsi
+	movq	%r8, %rdx
+#endif
+	movq	%rsp, %r8
+	subq	$32, %rsp
+	andq	$-32, %rsp
+	
+	movdqa	0*16(%rdx), %xmm0
+	movdqa	1*16(%rdx), %xmm1
+	movdqa	%xmm0, 0*16(%rdi)
+	movdqa	%xmm1, 1*16(%rdi)
+	
+	movl	0*4(%rsi), %eax
+	movl	1*4(%rsi), %ecx
+	movl	2*4(%rsi), %edx
+	movl	3*4(%rsi), %r9d
+	bswapl	%eax
+	bswapl	%ecx
+	bswapl	%edx
+	bswapl	%r9d
+	movl	%eax, 0*4(%rsp)
+	movl	%ecx, 1*4(%rsp)
+	movl	%edx, 2*4(%rsp)
+	movl	%r9d, 3*4(%rsp)
+	
+	movq	%rsp, %rsi
+	movl	$64, %eax
+	movl	$80, %ecx
+	/* rep xsha256 */
+	.byte 0xf3, 0x0f, 0xa6, 0xd0
+	
+	movdqa	bswap_xmm_mask(%rip), %xmm1
+	movdqa	0*16(%rdi), %xmm0
+	movdqa	1*16(%rdi), %xmm2
+	pshufb	%xmm1, %xmm0
+	pshufb	%xmm1, %xmm2
+	movdqa	%xmm0, 0*16(%rsp)
+	movdqa	%xmm2, 1*16(%rsp)
+	
+	movdqa	sha256_h+0*16(%rip), %xmm0
+	movdqa	sha256_h+1*16(%rip), %xmm1
+	movdqa	%xmm0, 0*16(%rdi)
+	movdqa	%xmm1, 1*16(%rdi)
+	
+	movq	%rsp, %rsi
+	xorq	%rax, %rax
+	movl	$32, %ecx
+	/* rep xsha256 */
+	.byte 0xf3, 0x0f, 0xa6, 0xd0
+	
+	movq	%r8, %rsp
+#if defined(_WIN64) || defined(__CYGWIN__)
+	popq	%rsi
+	popq	%rdi
+#endif
+	ret
+
 
 	.data
 	.p2align 7
