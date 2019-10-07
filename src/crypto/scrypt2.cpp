@@ -819,7 +819,7 @@ bool scrypt_N_1_1_256_multi(void *input, uint256 hashTarget, int *nHashesDone, u
         scrypt_N_1_1_256_3way(data, dhash, midstate, scratchbuf, N);
     else
 #endif
-        scrypt_N_1_1_256(data, dhash, midstate, scratchbuf);
+        scrypt_N_1_1_256(data, dhash, midstate, scratchbuf, N);
 
     *nHashesDone = throughput;
 
