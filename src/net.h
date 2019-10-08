@@ -71,7 +71,7 @@ static const unsigned int DEFAULT_MISBEHAVING_BANTIME = 60 * 60 * 24;  // Defaul
 unsigned int ReceiveFloodSize();
 unsigned int SendBufferSize();
 
-void AddOneShot(std::string strDest);
+void AddOneShot(const std::string& strDest);
 void AddressCurrentlyConnected(const CService& addr);
 CNode* FindNode(const CNetAddr& ip);
 CNode* FindNode(const CSubNet& subNet);
@@ -81,7 +81,7 @@ CNode* ConnectNode(CAddress addrConnect, const char* pszDest = NULL, bool obfuSc
 bool OpenNetworkConnection(const CAddress& addrConnect, CSemaphoreGrant *grantOutbound = NULL, const char *strDest = NULL, bool fOneShot = false);
 void MapPort(bool fUseUPnP);
 unsigned short GetListenPort();
-bool BindListenPort(const CService& bindAddr, std::string& strError, bool fWhitelisted = false);
+bool BindListenPort(const CService &bindAddr, std::string& strError, bool fWhitelisted = false);
 void StartNode(boost::thread_group& threadGroup, CScheduler& scheduler);
 bool StopNode();
 void SocketSendData(CNode *pnode);
@@ -198,6 +198,7 @@ public:
     bool fWhitelisted;
     double dPingTime;
     double dPingWait;
+    double dPingMin;
     std::string addrLocal;
 };
 
@@ -368,8 +369,6 @@ protected:
     static CCriticalSection cs_setBanned;
     static bool setBannedIsDirty;
 
-    std::vector<std::string> vecRequestsFulfilled; //keep track of what client has asked for
-
     // Whitelisted ranges. Any node connecting from these is automatically
     // whitelisted (as well as those connecting to whitelisted binds).
     static std::vector<CSubNet> vWhitelistedRange;
@@ -389,11 +388,10 @@ public:
     std::set<uint256> setKnown;
 
     // inventory based relay
-    mruset<CInv> setInventoryKnown;
+    CRollingBloomFilter filterInventoryKnown;
     std::vector<CInv> vInventoryToSend;
     CCriticalSection cs_inventory;
     std::multimap<int64_t, CInv> mapAskFor;
-    std::vector<uint256> vBlockRequested;
     // Used for headers announcements - unfiltered blocks to relay
     // Also protected by cs_inventory
     std::vector<uint256> vBlockHashesToAnnounce;
@@ -405,10 +403,12 @@ public:
     int64_t nPingUsecStart;
     // Last measured round-trip time.
     int64_t nPingUsecTime;
+    // Best measured round-trip time.
+    int64_t nMinPingUsecTime;
     // Whether a ping is requested.
     bool fPingQueued;
 
-    CNode(SOCKET hSocketIn, CAddress addrIn, std::string addrNameIn = "", bool fInboundIn=false);
+    CNode(SOCKET hSocketIn, const CAddress &addrIn, const std::string &addrNameIn = "", bool fInboundIn = false);
     ~CNode();
 
 private:
@@ -489,7 +489,7 @@ public:
     {
         {
             LOCK(cs_inventory);
-            setInventoryKnown.insert(inv);
+            filterInventoryKnown.insert(inv.hash);
         }
     }
 
@@ -497,8 +497,9 @@ public:
     {
         {
             LOCK(cs_inventory);
-            if (!setInventoryKnown.count(inv))
-                vInventoryToSend.push_back(inv);
+            if (inv.type == MSG_TX && filterInventoryKnown.contains(inv.hash))
+                return;
+            vInventoryToSend.push_back(inv);
         }
     }
 
@@ -780,10 +781,10 @@ public:
     //!clean unused entries (if bantime has expired)
     static void SweepBanned();
 
-    void copyStats(CNodeStats& stats);
+    void copyStats(CNodeStats &stats);
 
-    static bool IsWhitelistedRange(const CNetAddr& ip);
-    static void AddWhitelistedRange(const CSubNet& subnet);
+    static bool IsWhitelistedRange(const CNetAddr &ip);
+    static void AddWhitelistedRange(const CSubNet &subnet);
 
     // Network stats
     static void RecordBytesRecv(uint64_t bytes);
@@ -802,8 +803,6 @@ public:
 class CTransaction;
 void RelayTransaction(const CTransaction& tx);
 void RelayTransaction(const CTransaction& tx, const CDataStream& ss);
-void RelayTransactionLockReq(const CTransaction& tx, bool relayToAll = false);
-void RelayInv(CInv& inv);
 
 /** Access to the (IP) address database (peers.dat) */
 class CAddrDB
