@@ -409,7 +409,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageGroup(_("Connection options:"));
     strUsage += HelpMessageOpt("-addnode=<ip>", _("Add a node to connect to and attempt to keep the connection open"));
     strUsage += HelpMessageOpt("-banscore=<n>", strprintf(_("Threshold for disconnecting misbehaving peers (default: %u)"), 100));
-    strUsage += HelpMessageOpt("-bantime=<n>", strprintf(_("Number of seconds to keep misbehaving peers from reconnecting (default: %u)"), 86400));
+    strUsage += HelpMessageOpt("-bantime=<n>", strprintf(_("Number of seconds to keep misbehaving peers from reconnecting (default: %u)"), DEFAULT_MISBEHAVING_BANTIME));
     strUsage += HelpMessageOpt("-bind=<addr>", _("Bind to given address and always listen on it. Use [host]:port notation for IPv6"));
     strUsage += HelpMessageOpt("-connect=<ip>", _("Connect only to the specified node(s)"));
     strUsage += HelpMessageOpt("-discover", _("Discover own IP address (default: 1 when listening and no -externalip)"));
@@ -622,11 +622,14 @@ std::string LicenseInfo()
            "\n";
 }
 
-static void BlockNotifyCallback(const uint256& hashNewTip)
+static void BlockNotifyCallback(bool initialSync, const CBlockIndex *pBlockIndex)
 {
+    if (initialSync || !pBlockIndex)
+        return;
+
     std::string strCmd = GetArg("-blocknotify", "");
 
-    boost::replace_all(strCmd, "%s", hashNewTip.GetHex());
+    boost::replace_all(strCmd, "%s", pBlockIndex->GetBlockHash().GetHex());
     boost::thread t(runCommand, strCmd); // thread runs free
 }
 
@@ -910,8 +913,8 @@ bool AppInit2()
     if (GetBoolArg("-tor", false))
         return InitError(_("Error: Unsupported argument -tor found, use -onion."));
     // Check level must be 4 for zerocoin checks
-    if (mapArgs.count("-checklevel"))
-        return InitError(_("Error: Unsupported argument -checklevel found. Checklevel must be level 4."));
+    //if (mapArgs.count("-checklevel"))
+        //return InitError(_("Error: Unsupported argument -checklevel found. Checklevel must be level 4."));
 
     if (GetBoolArg("-benchmark", false))
         InitWarning(_("Warning: Unsupported argument -benchmark ignored, use -debug=bench."));
@@ -1533,7 +1536,7 @@ bool AppInit2()
                     }
 
                     // Zerocoin must check at level 4
-                    if (!CVerifyDB().VerifyDB(pcoinsdbview, 4, GetArg("-checkblocks", 100))) { //MIN_BLOCKS_TO_KEEP
+                    if (!CVerifyDB().VerifyDB(pcoinsdbview, 3, GetArg("-checkblocks", MIN_BLOCKS_TO_KEEP))) { //optimize - todo
                         strLoadError = _("Corrupted block database detected");
                         fVerifyingBlocks = false;
                         break;
