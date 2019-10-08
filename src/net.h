@@ -62,8 +62,14 @@ static const bool DEFAULT_UPNP = false;
 #endif
 /** The maximum number of entries in mapAskFor */
 static const size_t MAPASKFOR_MAX_SZ = MAX_INV_SZ;
+/** The maximum number of entries in setAskFor (larger due to getdata latency)*/
+static const size_t SETASKFOR_MAX_SZ = 2 * MAX_INV_SZ;
 /** The maximum number of peer connections to maintain. */
-static const unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 300;
+static const unsigned int DEFAULT_MAX_PEER_CONNECTIONS = 256;
+
+static const bool DEFAULT_FORCEDNSSEED = false;
+static const size_t DEFAULT_MAXRECEIVEBUFFER = 5 * 1000;
+static const size_t DEFAULT_MAXSENDBUFFER    = 1 * 1000;
 
 // NOTE: When adjusting this, update rpcnet:setban's help ("24h")
 static const unsigned int DEFAULT_MISBEHAVING_BANTIME = 60 * 60 * 24;  // Default 24-hour ban
@@ -386,12 +392,16 @@ public:
     CRollingBloomFilter addrKnown;
     bool fGetAddr;
     std::set<uint256> setKnown;
+    int64_t nNextAddrSend;
+    int64_t nNextLocalAddrSend;
 
     // inventory based relay
     CRollingBloomFilter filterInventoryKnown;
     std::vector<CInv> vInventoryToSend;
     CCriticalSection cs_inventory;
+    std::set<uint256> setAskFor;
     std::multimap<int64_t, CInv> mapAskFor;
+    int64_t nNextInvSend;
     // Used for headers announcements - unfiltered blocks to relay
     // Also protected by cs_inventory
     std::vector<uint256> vBlockHashesToAnnounce;
@@ -437,7 +447,7 @@ public:
     unsigned int GetTotalRecvSize()
     {
         unsigned int total = 0;
-        for (const CNetMessage& msg : vRecvMsg)
+        for (const CNetMessage &msg : vRecvMsg)
             total += msg.vRecv.size() + 24;
         return total;
     }
@@ -449,7 +459,7 @@ public:
     void SetRecvVersion(int nVersionIn)
     {
         nRecvVersion = nVersionIn;
-        for (CNetMessage& msg : vRecvMsg)
+        for (CNetMessage &msg : vRecvMsg)
             msg.SetVersion(nVersionIn);
     }
 
@@ -673,75 +683,12 @@ public:
             BeginMessage(pszCommand);
             ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7 << a8 << a9;
             EndMessage();
-        } catch (...) {
+        }
+        catch (...)
+        {
             AbortMessage();
             throw;
         }
-    }
-
-    template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10>
-    void PushMessage(const char* pszCommand, const T1& a1, const T2& a2, const T3& a3, const T4& a4, const T5& a5, const T6& a6, const T7& a7, const T8& a8, const T9& a9, const T10& a10)
-    {
-        try {
-            BeginMessage(pszCommand);
-            ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7 << a8 << a9 << a10;
-            EndMessage();
-        } catch (...) {
-            AbortMessage();
-            throw;
-        }
-    }
-
-    template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10, typename T11>
-    void PushMessage(const char* pszCommand, const T1& a1, const T2& a2, const T3& a3, const T4& a4, const T5& a5, const T6& a6, const T7& a7, const T8& a8, const T9& a9, const T10& a10, const T11& a11)
-    {
-        try {
-            BeginMessage(pszCommand);
-            ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7 << a8 << a9 << a10 << a11;
-            EndMessage();
-        } catch (...) {
-            AbortMessage();
-            throw;
-        }
-    }
-
-    template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6, typename T7, typename T8, typename T9, typename T10, typename T11, typename T12>
-    void PushMessage(const char* pszCommand, const T1& a1, const T2& a2, const T3& a3, const T4& a4, const T5& a5, const T6& a6, const T7& a7, const T8& a8, const T9& a9, const T10& a10, const T11& a11, const T12& a12)
-    {
-        try {
-            BeginMessage(pszCommand);
-            ssSend << a1 << a2 << a3 << a4 << a5 << a6 << a7 << a8 << a9 << a10 << a11 << a12;
-            EndMessage();
-        } catch (...) {
-            AbortMessage();
-            throw;
-        }
-    }
-
-    bool HasFulfilledRequest(std::string strRequest)
-    {
-        for (std::string& type : vecRequestsFulfilled) {
-            if (type == strRequest) return true;
-        }
-        return false;
-    }
-
-    void ClearFulfilledRequest(std::string strRequest)
-    {
-        std::vector<std::string>::iterator it = vecRequestsFulfilled.begin();
-        while (it != vecRequestsFulfilled.end()) {
-            if ((*it) == strRequest) {
-                vecRequestsFulfilled.erase(it);
-                return;
-            }
-            ++it;
-        }
-    }
-
-    void FulfilledRequest(std::string strRequest)
-    {
-        if (HasFulfilledRequest(strRequest)) return;
-        vecRequestsFulfilled.push_back(strRequest);
     }
 
     bool IsSubscribed(unsigned int nChannel);
@@ -803,6 +750,8 @@ public:
 class CTransaction;
 void RelayTransaction(const CTransaction& tx);
 void RelayTransaction(const CTransaction& tx, const CDataStream& ss);
+void RelayTransactionLockReq(const CTransaction& tx, bool relayToAll = false);
+void RelayInv(CInv& inv);
 
 /** Access to the (IP) address database (peers.dat) */
 class CAddrDB
