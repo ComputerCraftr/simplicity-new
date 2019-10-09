@@ -176,7 +176,7 @@ public:
     unsigned int nTime;
     unsigned int nBits;
     unsigned int nNonce;
-    BlockType type = POW_SCRYPT;
+    unsigned int nBlockType = POW_SCRYPT;
     uint256 nAccumulatorCheckpoint;
 
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
@@ -281,7 +281,7 @@ public:
         block.nTime = nTime;
         block.nBits = nBits;
         block.nNonce = nNonce;
-        block.type = type;
+        block.nBlockType = nBlockType;
         block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
         return block;
     }
@@ -349,19 +349,19 @@ public:
     bool IsProofOfWork() const
     {
         //return !(nFlags & BLOCK_PROOF_OF_STAKE);
-        return type > POS && type < ALGO_COUNT;
+        return nBlockType > POS && nBlockType < ALGO_COUNT;
     }
 
     bool IsProofOfStake() const
     {
         //return (nFlags & BLOCK_PROOF_OF_STAKE);
-        return type == POS;
+        return nBlockType == POS;
     }
 
     void SetProofOfStake()
     {
         //nFlags |= BLOCK_PROOF_OF_STAKE;
-        type = POS;
+        nBlockType = POS;
     }
 
     unsigned int GetStakeEntropyBit() const
@@ -507,11 +507,8 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
-        //if (this->nVersion > 7) {
-            assert(type >= POS && type < ALGO_COUNT);
-            int blockType = type;
-            READWRITE(blockType);
-        //}
+        //if (this->nVersion > 7)
+            READWRITE(nBlockType);
         if (this->nVersion > 19) {
             READWRITE(nAccumulatorCheckpoint);
             READWRITE(mapZerocoinSupply);
@@ -529,7 +526,7 @@ public:
         block.nTime = nTime;
         block.nBits = nBits;
         block.nNonce = nNonce;
-        block.type = type;
+        block.nBlockType = nBlockType;
         block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
         return block.GetHash();
     }

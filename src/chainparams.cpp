@@ -156,7 +156,8 @@ public:
         pchMessageStart[3] = 0x1e;
         vAlertPubKey = ParseHex("03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1");
         nDefaultPort = 11957;
-        bnProofOfWorkLimit = ~uint256(0) >> 16;
+        bnProofOfWorkLimit[POS] = ~uint256(0) >> 24;
+        bnProofOfWorkLimit[POW_SCRYPT] = ~uint256(0) >> 11;
         nMaxReorganizationDepth = 100;
         nEnforceBlockUpgradeMajority = 6075; // 75%
         nRejectBlockOutdatedMajority = 7695; // 95%
@@ -302,7 +303,7 @@ public:
         pchMessageStart[3] = 0xc6;
         vAlertPubKey = ParseHex("03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134");
         nDefaultPort = 21957;
-        bnProofOfWorkLimit = ~uint256(0) >> 12;
+        bnProofOfWorkLimit[POW_SCRYPT] = ~uint256(0) >> 8;
         nEnforceBlockUpgradeMajority = 3780; // 70%
         nRejectBlockOutdatedMajority = 4050; // 75%
         nToCheckBlockUpgradeMajority = 5400; // 4 days (1350*4)
@@ -413,7 +414,7 @@ public:
         nMinerThreads = 1;
         nTargetTimespan = 10 * 60; // Simplicity: 10 minutes
         nTargetSpacing = 48; // Simplicity: 48 seconds
-        bnProofOfWorkLimit = ~uint256(0) >> 1;
+        bnProofOfWorkLimit[POW_SCRYPT] = ~uint256(0) >> 1;
         nMaturity = 100;
         nStakeMinDepth = 0;
         nMasternodeCountDrift = 4;

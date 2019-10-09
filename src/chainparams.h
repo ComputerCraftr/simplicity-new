@@ -50,7 +50,8 @@ public:
     const MessageStartChars& MessageStart() const { return pchMessageStart; }
     const std::vector<unsigned char>& AlertKey() const { return vAlertPubKey; }
     int GetDefaultPort() const { return nDefaultPort; }
-    const uint256& ProofOfWorkLimit() const { return bnProofOfWorkLimit; }
+    const uint256& ProofOfWorkLimit(unsigned int algo) const { return bnProofOfWorkLimit[algo]; }
+    const uint256& ProofOfStakeLimit() const { return bnProofOfWorkLimit[POS]; }
     /** Used to check majorities for block version upgrade */
     int EnforceBlockUpgradeMajority() const { return nEnforceBlockUpgradeMajority; }
     int RejectBlockOutdatedMajority() const { return nRejectBlockOutdatedMajority; }
@@ -163,7 +164,7 @@ protected:
     //! Raw pub key bytes for the broadcast alert signing key.
     std::vector<unsigned char> vAlertPubKey;
     int nDefaultPort;
-    uint256 bnProofOfWorkLimit;
+    uint256 bnProofOfWorkLimit[ALGO_COUNT];
     int nMaxReorganizationDepth;
     int nEnforceBlockUpgradeMajority;
     int nRejectBlockOutdatedMajority;

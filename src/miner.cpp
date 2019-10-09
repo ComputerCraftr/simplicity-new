@@ -115,7 +115,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         pindexPrev = chainActive.Tip();
     }
 
-    pblock->type = fProofOfStake ? POS : POW_SCRYPT;
+    pblock->nBlockType = fProofOfStake ? POS : POW_SCRYPT;
 
     //const int nHeight = pindexPrev->nHeight + 1;
 

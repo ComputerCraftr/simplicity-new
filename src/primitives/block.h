@@ -42,7 +42,7 @@ public:
     uint32_t nBits;
     uint32_t nNonce;
     uint256 nAccumulatorCheckpoint;
-    BlockType type = POW_SCRYPT;
+    unsigned int nBlockType = POW_SCRYPT;
 
     CBlockHeader()
     {
@@ -60,11 +60,8 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
-        if (nVersion > 7) {
-            assert(type >= POS && type < ALGO_COUNT);
-            int blockType = type;
-            READWRITE(blockType);
-        }
+        if (nVersion > 7)
+            READWRITE(nBlockType);
 
         //zerocoin active, header changes to include accumulator checksum
         if (nVersion > 19)
@@ -79,7 +76,7 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
-        type = POW_SCRYPT;
+        nBlockType = POW_SCRYPT;
         nAccumulatorCheckpoint = 0;
     }
 
@@ -92,12 +89,12 @@ public:
     bool IsProofOfStake() const
     {
         //return (vtx.size() > 1 && vtx[1].IsCoinStake());
-        return type == POS;
+        return nBlockType == POS;
     }
 
     bool IsProofOfWork() const
     {
-        return type > POS && type < ALGO_COUNT;
+        return nBlockType > POS && nBlockType < ALGO_COUNT;
     }
 
     uint256 GetPoWHash() const;
@@ -162,7 +159,7 @@ public:
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
-        block.type           = type;
+        block.nBlockType     = nBlockType;
         block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
         return block;
     }

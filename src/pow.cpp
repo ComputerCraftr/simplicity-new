@@ -38,13 +38,13 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     uint256 PastDifficultyAveragePrev;
 
     if (BlockLastSolved == NULL || BlockLastSolved->nHeight == 0 || BlockLastSolved->nHeight < PastBlocksMin) {
-        return Params().ProofOfWorkLimit().GetCompact();
+        return Params().ProofOfWorkLimit(pblock->nBlockType).GetCompact();
     }
 
     int height = pindexLast->nHeight + 1;
     if (height >= Params().WALLET_UPGRADE_BLOCK()) {
-        uint256 bnTargetLimit = fProofOfStake ? (~uint256(0) >> 20) : Params().ProofOfWorkLimit();
-        //return bnTargetLimit.GetCompact();
+        uint256 bnTargetLimit = fProofOfStake ? Params().ProofOfStakeLimit() : Params().ProofOfWorkLimit(pblock->nBlockType);
+        //return bnTargetLimit.GetCompact(); // for testing
 
         int64_t nActualSpacing = 0; // difficulty for PoW and PoS are calculated separately
         const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, fProofOfStake);
@@ -113,8 +113,8 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     bnNew *= nActualTimespan;
     bnNew /= _nTargetTimespan;
 
-    if (bnNew > Params().ProofOfWorkLimit()) {
-        bnNew = Params().ProofOfWorkLimit();
+    if (bnNew > Params().ProofOfWorkLimit(pblock->nBlockType)) {
+        bnNew = Params().ProofOfWorkLimit(pblock->nBlockType);
     }
 
     return bnNew.GetCompact();
@@ -125,7 +125,7 @@ unsigned int GetLegacyNextWorkRequired(const CBlockIndex* pindexLast, const CBlo
     int64_t nTargetSpacing = 80;
     int64_t nTargetTimespan = 20 * 60;
 
-    uint256 bnTargetLimit = fProofOfStake ? (~uint256(0) >> 20) : Params().ProofOfWorkLimit();
+    uint256 bnTargetLimit = fProofOfStake ? ~uint256(0) >> 20 : ~uint256(0) >> 16;
 
     if (pindexLast == NULL)
         return bnTargetLimit.GetCompact(); // genesis block
@@ -155,7 +155,7 @@ unsigned int GetLegacyNextWorkRequired(const CBlockIndex* pindexLast, const CBlo
     return bnNew.GetCompact();
 }
 
-bool CheckProofOfWork(uint256 hash, unsigned int nBits)
+bool CheckProofOfWork(const CBlockHeader* pblock, uint256 hash)
 {
     bool fNegative;
     bool fOverflow;
@@ -164,10 +164,10 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits)
     if (Params().SkipProofOfWorkCheck())
         return true;
 
-    bnTarget.SetCompact(nBits, &fNegative, &fOverflow);
+    bnTarget.SetCompact(pblock->nBits, &fNegative, &fOverflow);
 
     // Check range
-    if (fNegative || bnTarget == 0 || fOverflow || bnTarget > Params().ProofOfWorkLimit())
+    if (fNegative || bnTarget == 0 || fOverflow || bnTarget > Params().ProofOfWorkLimit(pblock->nBlockType))
         return error("CheckProofOfWork() : nBits below minimum work");
 
     // Check proof of work matches claimed amount

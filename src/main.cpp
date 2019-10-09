@@ -3035,21 +3035,6 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         // return state.DoS(100, error("ConnectBlock() : PoW period ended"),
             // REJECT_INVALID, "PoW-ended");
 
-    if (block.IsProofOfStake()) {
-        uint256 hashProofOfStake = 0;
-        std::unique_ptr<CStakeInput> stake;
-
-        if (!CheckProofOfStake(block, hashProofOfStake, stake, pindex->pprev->nHeight))
-            return state.DoS(100, error("%s: proof of stake check failed", __func__));
-
-        if (!stake)
-            return error("%s: null stake ptr", __func__);
-
-        // uint256 hash = block.GetHash();
-        // if (!mapProofOfStake.count(hash)) // add to mapProofOfStake
-            // mapProofOfStake.insert(std::make_pair(hash, hashProofOfStake));
-    }
-
     bool fScriptChecks = pindex->nHeight >= Checkpoints::GetTotalBlocksEstimate();
 
     // Do not allow blocks that contain transactions which 'overwrite' older transactions,
@@ -4087,6 +4072,21 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
         pindexNew->pprev = (*miPrev).second;
         pindexNew->nHeight = pindexNew->pprev->nHeight + 1;
         pindexNew->BuildSkip();
+
+        // ppcoin: compute stake entropy bit for stake modifier
+        if (!pindexNew->SetStakeEntropyBit(pindexNew->GetStakeEntropyBit()))
+            LogPrintf("AddToBlockIndex() : SetStakeEntropyBit() failed \n");
+
+        if (!Params().IsStakeModifierV2(pindexNew->nHeight)) {
+            uint64_t nStakeModifier = 0;
+            bool fGeneratedStakeModifier = false;
+            if (!ComputeNextStakeModifier(pindexNew->pprev, nStakeModifier, fGeneratedStakeModifier))
+                LogPrintf("AddToBlockIndex() : ComputeNextStakeModifier() failed \n");
+            pindexNew->SetStakeModifier(nStakeModifier, fGeneratedStakeModifier);
+            // pindexNew->nStakeModifierChecksum = GetStakeModifierChecksum(pindexNew);
+            // if (!CheckStakeModifierCheckpoints(pindexNew->nHeight, pindexNew->nStakeModifierChecksum))
+                // LogPrintf("AddToBlockIndex() : Rejected by stake modifier checkpoint height=%d, modifier=%s \n", pindexNew->nHeight, std::to_string(nStakeModifier));
+        }
     }
     pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
     pindexNew->RaiseValidity(BLOCK_VALID_TREE);
@@ -4243,7 +4243,7 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
         return state.DoS(100, error("%s : block %s has an invalid type", __func__, block.GetHash().GetHex()));
 
     // Check proof of work matches claimed amount
-    if ((fVerifyingBlocks || fReindex || block.nTime >= nBlockCheckTime) && fCheckPOW && block.IsProofOfWork() && !CheckProofOfWork(block.GetPoWHash(), block.nBits))
+    if ((fVerifyingBlocks || fReindex || block.nTime >= nBlockCheckTime) && fCheckPOW && block.IsProofOfWork() && !CheckProofOfWork(&block, block.GetPoWHash()))
         return state.DoS(50, error("%s : proof of work failed", __func__),
             REJECT_INVALID, "high-hash");
 
@@ -4253,6 +4253,10 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
 bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bool fCheckMerkleRoot, bool fCheckSig)
 {
     // These are checks that are independent of context.
+
+    //if (block.fChecked)
+        //return true;
+
     const bool IsPoS = block.IsProofOfStake();
     LogPrint("debug", "%s: block=%s is %s\n", __func__, block.GetHash().GetHex(), block.IsProofOfStake() ? "proof of stake" : "proof of work");
 
@@ -4420,6 +4424,9 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
         return state.DoS(100, error("%s : out-of-bounds SigOpCount", __func__),
             REJECT_INVALID, "bad-blk-sigops", true);
 
+    //if (fCheckPOW && fCheckMerkleRoot && fCheckSig)
+        //block.fChecked = true;
+
     return true;
 }
 
@@ -4450,7 +4457,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
 
     assert(pindexPrev);
 
-    if (/*block.GetHash() != Params().HashGenesisBlock() &&*/ !CheckWork(block, pindexPrev))
+    if (block.nVersion > 7 && !CheckWork(block, pindexPrev))
         return false;
 
     int nHeight = pindexPrev->nHeight + 1;
@@ -4561,7 +4568,7 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
     return true;
 }
 
-static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex** ppindex, CBlockIndex* pindexPrev)
+static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex** ppindex, CBlockIndex* pindexPrev, bool fAlreadyCheckedHeader)
 {
     AssertLockHeld(cs_main);
     // Check for duplicate
@@ -4579,7 +4586,7 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
             return true;
         }
 
-        if (!CheckBlockHeader(block, state, true)) {
+        if (!CheckBlockHeader(block, state, !fAlreadyCheckedHeader)) {
             LogPrintf("%s : CheckBlockHeader failed\n", __func__);
             return false;
         }
@@ -4623,7 +4630,10 @@ static bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** pp
     CBlockIndex *pindexDummy = NULL;
     CBlockIndex *&pindex = ppindex ? *ppindex : pindexDummy;
 
-    if (!AcceptBlockHeader(block, state, &pindex, pindexDummy))
+    if (!AcceptBlockHeader(block, state, &pindex, pindexDummy, fAlreadyCheckedBlock)) //todo - keep track of if we already checked PoW better
+        return false;
+
+    if (block.nVersion < 8 && block.GetHash() != Params().HashGenesisBlock() && !CheckWork(block, pindexDummy))
         return false;
 
     // Try to process all requested blocks that we don't have, but only
@@ -4647,12 +4657,23 @@ static bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** pp
         if (fTooFarAhead) return true;      // Block height is too high
     }
 
+    if (block.IsProofOfStake()) {
+        uint256 hashProofOfStake = 0;
+        std::unique_ptr<CStakeInput> stake;
+
+        if (!CheckProofOfStake(block, hashProofOfStake, stake, pindex->pprev->nHeight))
+            return state.DoS(100, error("%s: proof of stake check failed", __func__));
+
+        if (!stake)
+            return error("%s: null stake ptr", __func__);
+
+        // uint256 hash = block.GetHash();
+        // if (!mapProofOfStake.count(hash)) // add to mapProofOfStake
+            // mapProofOfStake.insert(std::make_pair(hash, hashProofOfStake));
+    }
+
     // ppcoin: compute chain trust score
     pindex->bnChainTrust = (pindex->pprev ? pindex->pprev->bnChainTrust : 0) + pindex->GetBlockTrust();
-
-    // ppcoin: compute stake entropy bit for stake modifier
-    if (!pindex->SetStakeEntropyBit(pindex->GetStakeEntropyBit()))
-        LogPrintf("AddToBlockIndex() : SetStakeEntropyBit() failed \n");
 
     // ppcoin: record proof-of-stake hash value
     /*if (pindex->IsProofOfStake()) {
@@ -4663,16 +4684,7 @@ static bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** pp
         pindex->hashProofOfWork = block.GetPoWHash();
     }*/
 
-    if (!Params().IsStakeModifierV2(pindex->nHeight)) {
-        uint64_t nStakeModifier = 0;
-        bool fGeneratedStakeModifier = false;
-        if (!ComputeNextStakeModifier(pindex->pprev, nStakeModifier, fGeneratedStakeModifier))
-            LogPrintf("AddToBlockIndex() : ComputeNextStakeModifier() failed \n");
-        pindex->SetStakeModifier(nStakeModifier, fGeneratedStakeModifier);
-        // pindex->nStakeModifierChecksum = GetStakeModifierChecksum(pindex);
-        // if (!CheckStakeModifierCheckpoints(pindex->nHeight, pindex->nStakeModifierChecksum))
-            // LogPrintf("AddToBlockIndex() : Rejected by stake modifier checkpoint height=%d, modifier=%s \n", pindex->nHeight, std::to_string(nStakeModifier));
-    } else {
+    if (Params().IsStakeModifierV2(pindex->nHeight)) {
         // compute v2 stake modifier
         pindex->nStakeModifierV2 = ComputeStakeModifier(pindex->pprev, pindex->IsProofOfStake() ? block.vtx[1].vin[0].prevout.hash : block.vtx[0].vout[0].GetHash());
     }
@@ -4772,7 +4784,7 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, bool
     int64_t nStartTime = GetTimeMillis();
 
     if (pblock->nVersion < 8 && pblock->vtx.size() > 1 && pblock->vtx[1].IsCoinStake())
-        pblock->type = POS;
+        pblock->nBlockType = POS;
 
     // check block
     bool checked = CheckBlock(*pblock, state);
@@ -6493,7 +6505,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
                 strError = "non-continuous headers sequence";
                 break;
             }
-            if (!AcceptBlockHeader(header, state, &pindexLast, NULL)) {
+            if (!AcceptBlockHeader(header, state, &pindexLast, NULL, false)) {
                 int nDoS;
                 if (state.IsInvalid(nDoS)) {
                     if (nDoS > 0)
