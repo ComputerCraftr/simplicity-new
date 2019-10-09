@@ -174,7 +174,7 @@ UniValue generate(const UniValue& params, bool fHelp)
             ++pblock->nNonce;
         }
         CValidationState state;
-        if (!ProcessNewBlock(state, NULL, pblock))
+        if (!ProcessNewBlock(state, NULL, pblock, true, NULL))
             throw JSONRPCError(RPC_INTERNAL_ERROR, "ProcessNewBlock, block not accepted");
         ++nHeight;
         // fPoS = nHeight >= Params().LAST_POW_BLOCK();
@@ -459,7 +459,7 @@ static UniValue BIP22ValidationResult(const CValidationState& state)
         pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 
         //CValidationState state;
-        //return ProcessNewBlock(state, NULL, pblock);
+        //return ProcessNewBlock(state, NULL, pblock, true, NULL);
         return CheckProofOfWork(pblock->GetPoWHash(), pblock->nBits);
     }
 }*/
@@ -588,7 +588,7 @@ static UniValue BIP22ValidationResult(const CValidationState& state)
         pblock->hashMerkleRoot = pblock->BuildMerkleTree();
 
         //CValidationState state;
-        //return ProcessNewBlock(state, NULL, pblock);
+        //return ProcessNewBlock(state, NULL, pblock, true, NULL);
         return CheckProofOfWork(pblock->GetPoWHash(), pblock->nBits);
     }
 }*/
@@ -941,7 +941,7 @@ UniValue submitblock(const UniValue& params, bool fHelp)
     CValidationState state;
     submitblock_StateCatcher sc(block.GetHash());
     RegisterValidationInterface(&sc);
-    bool fAccepted = ProcessNewBlock(state, NULL, &block);
+    bool fAccepted = ProcessNewBlock(state, NULL, &block, true, NULL);
     UnregisterValidationInterface(&sc);
     if (fBlockPresent) {
         if (fAccepted && !sc.found)

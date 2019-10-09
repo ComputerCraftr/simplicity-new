@@ -3035,22 +3035,20 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     // if (pindex->nHeight > Params().LAST_POW_BLOCK() && block.IsProofOfWork())
         // return state.DoS(100, error("ConnectBlock() : PoW period ended"),
             // REJECT_INVALID, "PoW-ended");
-    uint256 hashProofOfStake = 0;
-    if (block.IsProofOfStake()) {
-        unique_ptr<CStakeInput> stake;
 
-        if (!CheckProofOfStake(block, hashProofOfStake, stake))
+    if (block.IsProofOfStake()) {
+        uint256 hashProofOfStake = 0;
+        std::unique_ptr<CStakeInput> stake;
+
+        if (!CheckProofOfStake(block, hashProofOfStake, stake, pindex->pprev->nHeight))
             return state.DoS(100, error("%s: proof of stake check failed", __func__));
 
         if (!stake)
             return error("%s: null stake ptr", __func__);
 
-        if (stake->IsZSPL() && !ContextualCheckZerocoinStake(pindex->pprev->nHeight, stake.get()))
-            return state.DoS(100, error("%s: staked zSPL fails context checks", __func__));
-
-        /*uint256 hash = block.GetHash();
-        if (!mapProofOfStake.count(hash)) // add to mapProofOfStake
-            mapProofOfStake.insert(make_pair(hash, hashProofOfStake));*/
+        // uint256 hash = block.GetHash();
+        // if (!mapProofOfStake.count(hash)) // add to mapProofOfStake
+            // mapProofOfStake.insert(std::make_pair(hash, hashProofOfStake));
     }
 
     bool fScriptChecks = pindex->nHeight >= Checkpoints::GetTotalBlocksEstimate();
@@ -6488,7 +6486,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
                 strError = "non-continuous headers sequence";
                 break;
             }
-            if (!AcceptBlockHeader(header, state, &pindexLast)) {
+            if (!AcceptBlockHeader(header, state, &pindexLast, NULL)) {
                 int nDoS;
                 if (state.IsInvalid(nDoS)) {
                     if (nDoS > 0)
@@ -6550,7 +6548,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
             // If this set of headers is valid and ends in a block with at least as
             // much work as our tip, download as much as possible.
             if (fCanDirectFetch && pindexLast->IsValid(BLOCK_VALID_TREE) && chainActive.Tip()->nChainWork <= pindexLast->nChainWork) {
-                vector<CBlockIndex *> vToFetch;
+                std::vector<CBlockIndex *> vToFetch;
                 CBlockIndex *pindexWalk = pindexLast;
                 // Calculate all the blocks we'd need to switch to pindexLast, up to a limit.
                 while (pindexWalk && !chainActive.Contains(pindexWalk) && vToFetch.size() <= MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
@@ -6570,7 +6568,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
                             pindexLast->GetBlockHash().ToString(),
                             pindexLast->nHeight);
                 } else {
-                    vector<CInv> vGetData;
+                    std::vector<CInv> vGetData;
                     // Download as much as possible, from earliest to latest.
                     BOOST_REVERSE_FOREACH(CBlockIndex *pindex, vToFetch) {
                         if (nodestate->nBlocksInFlight >= MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
