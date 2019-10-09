@@ -245,6 +245,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                 pindexNew->nTime = diskindex.nTime;
                 pindexNew->nBits = diskindex.nBits;
                 pindexNew->nNonce = diskindex.nNonce;
+                pindexNew->type = diskindex.type;
                 pindexNew->nStatus = diskindex.nStatus;
                 pindexNew->nTx = diskindex.nTx;
 
@@ -262,8 +263,8 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                 } else {
                     pindexNew->nStakeModifierV2 = diskindex.nStakeModifierV2;
                 }
-                pindexNew->prevoutStake = diskindex.prevoutStake;
-                pindexNew->nStakeTime = diskindex.nStakeTime;
+                //pindexNew->prevoutStake = diskindex.prevoutStake;
+                //pindexNew->nStakeTime = diskindex.nStakeTime;
                 //pindexNew->hashProofOfStake = diskindex.hashProofOfStake;
                 //pindexNew->hashProofOfWork = diskindex.hashProofOfWork;
 

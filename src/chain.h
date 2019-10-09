@@ -152,7 +152,7 @@ public:
 
     unsigned int nFlags; // ppcoin: block index flags
     enum {
-        BLOCK_PROOF_OF_STAKE = (1 << 0), // is proof-of-stake block
+        //BLOCK_PROOF_OF_STAKE = (1 << 0), // is proof-of-stake block
         BLOCK_STAKE_ENTROPY = (1 << 1),  // entropy bit for stake modifier
         BLOCK_STAKE_MODIFIER = (1 << 2), // regenerated stake modifier
     };
@@ -162,8 +162,8 @@ public:
     uint256 GetBlockTrust() const;
     uint64_t nStakeModifier;             // hash modifier for proof-of-stake
     unsigned int nStakeModifierChecksum; // checksum of index; in-memory only
-    COutPoint prevoutStake;
-    unsigned int nStakeTime;
+    //COutPoint prevoutStake;
+    //unsigned int nStakeTime;
     //uint256 hashProofOfStake;
     //uint256 hashProofOfWork;
     int64_t nMint;
@@ -176,6 +176,7 @@ public:
     unsigned int nTime;
     unsigned int nBits;
     unsigned int nNonce;
+    BlockType type = POW_SCRYPT;
     uint256 nAccumulatorCheckpoint;
 
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
@@ -206,8 +207,8 @@ public:
         nStakeModifier = 0;
         nStakeModifierV2 = uint256();
         nStakeModifierChecksum = 0;
-        prevoutStake.SetNull();
-        nStakeTime = 0;
+        //prevoutStake.SetNull();
+        //nStakeTime = 0;
         //hashProofOfStake = uint256();
         //hashProofOfWork = uint256();
 
@@ -243,8 +244,9 @@ public:
 
         if (block.IsProofOfStake()) {
             SetProofOfStake();
-            prevoutStake = block.vtx[1].vin[0].prevout;
-            nStakeTime = block.nTime;
+            //if (block.vtx.size())
+                //prevoutStake = block.vtx[1].vin[0].prevout;
+            //nStakeTime = block.nTime;
         }
     }
 
@@ -279,6 +281,7 @@ public:
         block.nTime = nTime;
         block.nBits = nBits;
         block.nNonce = nNonce;
+        block.type = type;
         block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
         return block;
     }
@@ -345,17 +348,20 @@ public:
 
     bool IsProofOfWork() const
     {
-        return !(nFlags & BLOCK_PROOF_OF_STAKE);
+        //return !(nFlags & BLOCK_PROOF_OF_STAKE);
+        return type > POS && type < ALGO_COUNT;
     }
 
     bool IsProofOfStake() const
     {
-        return (nFlags & BLOCK_PROOF_OF_STAKE);
+        //return (nFlags & BLOCK_PROOF_OF_STAKE);
+        return type == POS;
     }
 
     void SetProofOfStake()
     {
-        nFlags |= BLOCK_PROOF_OF_STAKE;
+        //nFlags |= BLOCK_PROOF_OF_STAKE;
+        type = POS;
     }
 
     unsigned int GetStakeEntropyBit() const
@@ -481,7 +487,7 @@ public:
             READWRITE(nStakeModifierV2);
         }
 
-        if (IsProofOfStake()) {
+        /*if (IsProofOfStake()) {
             READWRITE(prevoutStake);
             READWRITE(nStakeTime);
             //READWRITE(hashProofOfStake);
@@ -491,7 +497,7 @@ public:
             const_cast<CDiskBlockIndex*>(this)->prevoutStake.SetNull();
             const_cast<CDiskBlockIndex*>(this)->nStakeTime = 0;
             //const_cast<CDiskBlockIndex*>(this)->hashProofOfStake = uint256();
-        }
+        }*/
 
         // block header
         READWRITE(this->nVersion);
@@ -501,6 +507,11 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
+        //if (this->nVersion > 7) {
+            assert(type >= POS && type < ALGO_COUNT);
+            int blockType = type;
+            READWRITE(blockType);
+        //}
         if (this->nVersion > 19) {
             READWRITE(nAccumulatorCheckpoint);
             READWRITE(mapZerocoinSupply);
@@ -518,6 +529,7 @@ public:
         block.nTime = nTime;
         block.nBits = nBits;
         block.nNonce = nNonce;
+        block.type = type;
         block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
         return block.GetHash();
     }

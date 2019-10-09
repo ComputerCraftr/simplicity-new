@@ -316,14 +316,14 @@ UniValue getbestblockhash(const UniValue& params, bool fHelp)
     return chainActive.Tip()->GetBlockHash().GetHex();
 }
 
-void RPCNotifyBlockChange(const uint256 hashBlock)
+void RPCNotifyBlockChange(bool initialSync, const CBlockIndex *pBlockIndex)
 {
-    CBlockIndex* pindex = nullptr;
-    pindex = mapBlockIndex.at(hashBlock);
-    if(pindex) {
+    if (initialSync || !pBlockIndex)
+        return;
+    else {
         std::lock_guard<std::mutex> lock(cs_blockchange);
-        latestblock.hash = pindex->GetBlockHash();
-        latestblock.height = pindex->nHeight;
+        latestblock.hash = pBlockIndex->GetBlockHash();
+        latestblock.height = pBlockIndex->nHeight;
     }
     cond_blockchange.notify_all();
 }

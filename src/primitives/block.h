@@ -17,6 +17,12 @@
 static const unsigned int MAX_BLOCK_SIZE_CURRENT = 100000000;
 static const unsigned int MAX_BLOCK_SIZE_LEGACY = 85673194;
 
+enum BlockType {
+    POS = 0,
+    POW_SCRYPT = 1,
+    ALGO_COUNT
+};
+
 /** Nodes collect new transactions into a block, hash them into a hash tree,
  * and scan through nonce values to make the block's hash satisfy proof-of-work
  * requirements.  When they solve the proof-of-work, they broadcast the block
@@ -36,6 +42,7 @@ public:
     uint32_t nBits;
     uint32_t nNonce;
     uint256 nAccumulatorCheckpoint;
+    BlockType type = POW_SCRYPT;
 
     CBlockHeader()
     {
@@ -53,6 +60,11 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
+        if (nVersion > 7) {
+            assert(type >= POS && type < ALGO_COUNT);
+            int blockType = type;
+            READWRITE(blockType);
+        }
 
         //zerocoin active, header changes to include accumulator checksum
         if (nVersion > 19)
@@ -67,12 +79,25 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
+        type = POW_SCRYPT;
         nAccumulatorCheckpoint = 0;
     }
 
     bool IsNull() const
     {
         return (nBits == 0);
+    }
+
+    // ppcoin: two types of block: proof-of-work or proof-of-stake
+    bool IsProofOfStake() const
+    {
+        //return (vtx.size() > 1 && vtx[1].IsCoinStake());
+        return type == POS;
+    }
+
+    bool IsProofOfWork() const
+    {
+        return type > POS && type < ALGO_COUNT;
     }
 
     uint256 GetPoWHash() const;
@@ -115,8 +140,8 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(*(CBlockHeader*)this);
         READWRITE(vtx);
-    if(vtx.size() > 1 && vtx[1].IsCoinStake())
-        READWRITE(vchBlockSig);
+        if (vtx.size() > 1 && vtx[1].IsCoinStake())
+            READWRITE(vchBlockSig);
     }
 
     void SetNull()
@@ -137,26 +162,16 @@ public:
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
+        block.type           = type;
         block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
         return block;
-    }
-
-    // ppcoin: two types of block: proof-of-work or proof-of-stake
-    bool IsProofOfStake() const
-    {
-        return (vtx.size() > 1 && vtx[1].IsCoinStake());
-    }
-
-    bool IsProofOfWork() const
-    {
-        return !IsProofOfStake();
     }
 
     bool IsZerocoinStake() const;
 
     std::pair<COutPoint, unsigned int> GetProofOfStake() const
     {
-        return IsProofOfStake()? std::make_pair(vtx[1].vin[0].prevout, nTime) : std::make_pair(COutPoint(), (unsigned int)0);
+        return IsProofOfStake() ? std::make_pair(vtx[1].vin[0].prevout, nTime) : std::make_pair(COutPoint(), (unsigned int)0);
     }
 
     // Build the in-memory merkle tree for this block and return the merkle root.

@@ -179,7 +179,7 @@ bool ComputeNextStakeModifier(const CBlockIndex* pindexPrev, uint64_t& nStakeMod
 
     // Sort candidate blocks by timestamp
     std::vector<std::pair<int64_t, uint256> > vSortedByTimestamp;
-    vSortedByTimestamp.reserve(64 * MODIFIER_INTERVAL / (2 * Params().TargetSpacing())); // effective PoS spacing is 160 seconds
+    vSortedByTimestamp.reserve(64 * MODIFIER_INTERVAL / (ALGO_COUNT * Params().TargetSpacing())); // effective PoS spacing is 160 seconds
     int64_t nSelectionIntervalStart = (pindexPrev->GetBlockTime() / MODIFIER_INTERVAL ) * MODIFIER_INTERVAL - OLD_MODIFIER_INTERVAL;
     const CBlockIndex* pindex = pindexPrev;
 

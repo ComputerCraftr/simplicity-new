@@ -115,6 +115,8 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         pindexPrev = chainActive.Tip();
     }
 
+    pblock->type = fProofOfStake ? POS : POW_SCRYPT;
+
     //const int nHeight = pindexPrev->nHeight + 1;
 
     // Make sure to create the correct block version after zerocoin is enabled
