@@ -4260,7 +4260,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     //if (block.fChecked)
         //return true;
 
-    const bool IsPoS = block.IsProofOfStake();
+    const bool IsPoS = block.IsProofOfStake(); //|| (block.vtx.size() > 1 && block.vtx[1].IsCoinStake());
     LogPrint("debug", "%s: block=%s is %s\n", __func__, block.GetHash().GetHex(), block.IsProofOfStake() ? "proof of stake" : "proof of work");
 
     // Check that the header is valid (particularly PoW).  This is mostly
@@ -5079,6 +5079,8 @@ bool CVerifyDB::VerifyDB(CCoinsView* coinsview, int nCheckLevel, int nCheckDepth
         // check level 0: read from disk
         if (!ReadBlockFromDisk(block, pindex))
             return error("VerifyDB() : *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+        if (block.nVersion < 8 && block.vtx.size() > 1 && block.vtx[1].IsCoinStake())
+            block.nBlockType = POS;
         // check level 1: verify block validity
         if (nCheckLevel >= 1 && !CheckBlock(block, state))
             return error("VerifyDB() : *** found bad block at %d, hash=%s (%s)\n",
@@ -5120,6 +5122,8 @@ bool CVerifyDB::VerifyDB(CCoinsView* coinsview, int nCheckLevel, int nCheckDepth
             CBlock block;
             if (!ReadBlockFromDisk(block, pindex))
                 return error("VerifyDB() : *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
+            if (block.nVersion < 8 && block.vtx.size() > 1 && block.vtx[1].IsCoinStake())
+                block.nBlockType = POS;
             if (!ConnectBlock(block, state, pindex, coins, false))
                 return error("VerifyDB() : *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         }
@@ -6090,7 +6094,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
             pfrom->fDisconnect = true;
     }
 
-    else if (strCommand == "sendheaders" && Params().HeadersFirstSyncingActive())
+    else if (strCommand == "sendheaders" && pfrom->nVersion >= SENDHEADERS_VERSION && Params().HeadersFirstSyncingActive())
     {
         LOCK(cs_main);
         State(pfrom->GetId())->fPreferHeaders = true;
@@ -6125,7 +6129,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
             if (inv.type == MSG_BLOCK) {
                 UpdateBlockAvailability(pfrom->GetId(), inv.hash);
                 if (!fAlreadyHave && !fImporting && !fReindex && !mapBlocksInFlight.count(inv.hash)) {
-                    if (!Params().HeadersFirstSyncingActive() || pfrom->nVersion < SENDHEADERS_VERSION)
+                    if (!Params().HeadersFirstSyncingActive() /*|| pfrom->nVersion < SENDHEADERS_VERSION*/) // old version does have getheaders
                     {
                         // Add this to the list of blocks to request
                         vToFetch.push_back(inv);
@@ -6450,7 +6454,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
 
     else if (strCommand == "headers" && Params().HeadersFirstSyncingActive() && !fImporting && !fReindex) // Ignore headers received while importing
     {
-        std::vector<CBlockHeader> headers;
+        std::vector<CBlock> headers;
 
         // Bypass the normal CBlock deserialization, as we don't want to risk deserializing 2000 full blocks.
         unsigned int nCount = ReadCompactSize(vRecv);
@@ -6506,7 +6510,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
         int nLast = 0;
 
         CBlockIndex *pindexLast = NULL;
-        for (const CBlockHeader& header : headers) {
+        for (const CBlock& header : headers) {
             CValidationState state;
             if (pindexLast != NULL && header.hashPrevBlock != pindexLast->GetBlockHash()) {
                 Misbehaving(pfrom->GetId(), 20);
@@ -7180,7 +7184,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             if (nSyncStarted == 0 || pindexBestHeader->GetBlockTime() > GetAdjustedTime() - 6 * 60 * 60) { // NOTE: was "close to today" and 24h in Bitcoin
                 state.fSyncStarted = true;
                 nSyncStarted++;
-                if (!Params().HeadersFirstSyncingActive() || pto->nVersion < SENDHEADERS_VERSION)
+                if (!Params().HeadersFirstSyncingActive() /*|| pto->nVersion < SENDHEADERS_VERSION*/) // old version does have getheaders
                 {
                     pto->PushMessage("getblocks", chainActive.GetLocator(chainActive.Tip()), uint256(0));
                 }

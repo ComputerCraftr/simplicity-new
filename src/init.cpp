@@ -1536,7 +1536,7 @@ bool AppInit2()
                     }
 
                     // Zerocoin must check at level 4
-                    if (!CVerifyDB().VerifyDB(pcoinsdbview, 3, GetArg("-checkblocks", MIN_BLOCKS_TO_KEEP))) { //optimize - todo
+                    if (!CVerifyDB().VerifyDB(pcoinsdbview, 4, GetArg("-checkblocks", MIN_BLOCKS_TO_KEEP))) { //optimize - todo
                         strLoadError = _("Corrupted block database detected");
                         fVerifyingBlocks = false;
                         break;
