@@ -3035,6 +3035,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         // return state.DoS(100, error("ConnectBlock() : PoW period ended"),
             // REJECT_INVALID, "PoW-ended");
 
+    if (block.nVersion < 8 && /*block.GetHash() != Params().HashGenesisBlock() &&*/ !CheckWork(block, pindex->pprev))
+        return false;
+
     bool fScriptChecks = pindex->nHeight >= Checkpoints::GetTotalBlocksEstimate();
 
     // Do not allow blocks that contain transactions which 'overwrite' older transactions,
@@ -4633,9 +4636,6 @@ static bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** pp
     if (!AcceptBlockHeader(block, state, &pindex, pindexDummy, fAlreadyCheckedBlock)) //todo - keep track of if we already checked PoW better
         return false;
 
-    if (block.nVersion < 8 && block.GetHash() != Params().HashGenesisBlock() && !CheckWork(block, pindexDummy))
-        return false;
-
     // Try to process all requested blocks that we don't have, but only
     // process an unrequested block if it's new and has enough work to
     // advance our tip, and isn't too many blocks ahead.
@@ -4782,6 +4782,15 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, bool
 {
     // Preliminary checks
     int64_t nStartTime = GetTimeMillis();
+    
+    if (pblock->GetHash() != Params().HashGenesisBlock() && pfrom != NULL && pfrom->nVersion < SENDHEADERS_VERSION) {
+        //if we get this far, check if the prev block is our prev block, if not then request sync and return false
+        BlockMap::iterator mi = mapBlockIndex.find(pblock->hashPrevBlock);
+        if (mi == mapBlockIndex.end() || !((*mi).second->nStatus & BLOCK_HAVE_DATA)) {
+            pfrom->PushMessage("getblocks", chainActive.GetLocator(), uint256(0));
+            return false;
+        }
+    }
 
     if (pblock->nVersion < 8 && pblock->vtx.size() > 1 && pblock->vtx[1].IsCoinStake())
         pblock->nBlockType = POS;

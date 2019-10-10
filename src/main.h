@@ -480,6 +480,7 @@ bool DisconnectBlocksAndReprocess(int blocks);
 bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pindex, CCoinsViewCache& coins, bool fJustCheck, bool fAlreadyChecked = false);
 
 /** Context-independent validity checks */
+bool CheckWork(const CBlockHeader& block, CBlockIndex* const pindexPrev);
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool fCheckPOW = true);
 bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW = true, bool fCheckMerkleRoot = true, bool fCheckSig = true);
 
