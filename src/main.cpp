@@ -2063,8 +2063,8 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos)
 
     // Check the header
     // treat PoW and PoS blocks the same - don't waste time on redundant PoW checks that won't catch invalid PoS blocks anyway
-    //if (block.IsProofOfWork() && !CheckProofOfWork(block.GetPoWHash(), block.nBits))
-        //return error("ReadBlockFromDisk : Errors in block header");
+    if (block.IsProofOfWork() && block.nBlockType != POW_SCRYPT_SQUARED && !CheckProofOfWork(&block))
+        return error("ReadBlockFromDisk : Errors in block header");
 
     return true;
 }
@@ -4269,7 +4269,7 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
         return state.DoS(100, error("%s : block %s has an invalid type", __func__, block.GetHash().GetHex()));
 
     // Check proof of work matches claimed amount
-    if ((fVerifyingBlocks || fReindex || block.nTime >= nBlockCheckTime) && fCheckPOW && block.IsProofOfWork() && !CheckProofOfWork(&block, block.GetPoWHash()))
+    if ((fVerifyingBlocks || fReindex || block.nTime >= nBlockCheckTime) && fCheckPOW && block.IsProofOfWork() && !CheckProofOfWork(&block))
         return state.DoS(50, error("%s : proof of work failed", __func__),
             REJECT_INVALID, "high-hash");
 

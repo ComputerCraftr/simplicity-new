@@ -108,7 +108,7 @@ unsigned int GetLegacyNextWorkRequired(const CBlockIndex* pindexLast, const CBlo
     return bnNew.GetCompact();
 }
 
-bool CheckProofOfWork(const CBlockHeader* pblock, uint256 hash)
+bool CheckProofOfWork(const CBlockHeader* pblock)
 {
     bool fNegative;
     bool fOverflow;
@@ -124,7 +124,7 @@ bool CheckProofOfWork(const CBlockHeader* pblock, uint256 hash)
         return error("CheckProofOfWork() : nBits below minimum work");
 
     // Check proof of work matches claimed amount
-    if (hash.GetCompact() > bnTarget) {
+    if (pblock->GetPoWHash().GetCompact() > bnTarget) {
         if (Params().MineBlocksOnDemand())
             return false;
         else

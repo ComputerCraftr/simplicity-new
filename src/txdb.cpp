@@ -269,10 +269,11 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                 //pindexNew->hashProofOfWork = diskindex.hashProofOfWork;
 
                 // treat PoW and PoS blocks the same - don't waste time on redundant PoW checks that won't catch invalid PoS blocks anyway
-                //if (pindexNew->GetBlockHash() != Params().HashGenesisBlock()) {
-                    //if (pindexNew->IsProofOfWork() && (!CheckProofOfWork(pindexNew->hashProofOfWork, pindexNew->nBits) || pindexNew->hashProofOfWork == uint256()))
-                        //return error("LoadBlockIndex() : CheckProofOfWork failed: %s", pindexNew->ToString());
-                //}
+                if (pindexNew->IsProofOfWork() && pindexNew->nBlockType != POW_SCRYPT_SQUARED) {
+                    CBlockHeader header = pindexNew->GetBlockHeader();
+                    if (!CheckProofOfWork(&header))
+                        return error("LoadBlockIndex() : CheckProofOfWork failed: %s", pindexNew->ToString());
+                }
 
                 //populate accumulator checksum map in memory
                 if(pindexNew->nAccumulatorCheckpoint != 0 && pindexNew->nAccumulatorCheckpoint != nPreviousCheckpoint) {

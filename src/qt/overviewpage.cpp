@@ -1,6 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
 // Copyright (c) 2015-2019 The PIVX developers
+// Copyright (c) 2018-2019 The Simplicity developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -192,8 +193,8 @@ void OverviewPage::setBalance(const CAmount& balance, const CAmount& unconfirmed
     }
 
     // SPL Balance
-    CAmount nTotalBalance = balance + unconfirmedBalance + immatureBalance;
-    CAmount splAvailableBalance = balance - nLockedBalance;
+    CAmount nTotalBalance = balance + unconfirmedBalance + immatureBalance; // add PoW immature balance
+    CAmount splAvailableBalance = balance /*- immatureBalance*/ - nLockedBalance; // subtract PoS immature balance
     CAmount nUnlockedBalance = nTotalBalance - nLockedBalance;
 
     // SPL Watch-Only Balance

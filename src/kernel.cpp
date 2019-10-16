@@ -509,7 +509,7 @@ bool CheckCoinStakeTimestamp(int64_t nTimeBlock, int64_t nTimeTx)
     CDataStream ss(SER_GETHASH, 0);
     if (pindex->pprev)
         ss << pindex->pprev->nStakeModifierChecksum;
-    ss << pindex->nFlags << uint256() /*pindex->hashProofOfStake << pindex->nStakeModifier;
+    ss << pindex->nFlags << pindex->hashProofOfStake << pindex->nStakeModifier; //uint256() == pindex->hashProofOfStake
     uint256 hashChecksum = Hash(ss.begin(), ss.end());
     hashChecksum >>= (256 - 32);
     return hashChecksum.Get64();

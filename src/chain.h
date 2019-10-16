@@ -217,6 +217,7 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
+        nBlockType = POW_QUARK;
         nAccumulatorCheckpoint = 0;
         // Start supply of each denomination with 0s
         for (auto& denom : libzerocoin::zerocoinDenomList) {
@@ -247,7 +248,8 @@ public:
             //if (block.vtx.size())
                 //prevoutStake = block.vtx[1].vin[0].prevout;
             //nStakeTime = block.nTime;
-        }
+        } else
+            nBlockType = block.nBlockType;
     }
 
 

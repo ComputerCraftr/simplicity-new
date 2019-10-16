@@ -168,7 +168,7 @@ UniValue generate(const UniValue& params, bool fHelp)
                 IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
             }
         }
-        while (!CheckProofOfWork(pblock, pblock->GetPoWHash())) {
+        while (!CheckProofOfWork(pblock)) {
             // Yes, there is a chance every nonce could fail to satisfy the -regtest
             // target -- 1 in 2^(2^32). That ain't gonna happen.
             ++pblock->nNonce;
@@ -486,7 +486,7 @@ static UniValue BIP22ValidationResult(const CValidationState& state)
 
         //CValidationState state;
         //return ProcessNewBlock(state, NULL, pblock, true, NULL);
-        return CheckProofOfWork(pblock->GetPoWHash(), pblock->nBits);
+        return CheckProofOfWork(pblock);
     }
 }*/
 
@@ -615,7 +615,7 @@ static UniValue BIP22ValidationResult(const CValidationState& state)
 
         //CValidationState state;
         //return ProcessNewBlock(state, NULL, pblock, true, NULL);
-        return CheckProofOfWork(pblock->GetPoWHash(), pblock->nBits);
+        return CheckProofOfWork(pblock);
     }
 }*/
 
