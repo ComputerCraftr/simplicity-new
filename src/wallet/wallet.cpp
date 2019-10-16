@@ -2429,6 +2429,8 @@ bool CWallet::CreateCoinStake(
             std::vector<CTxOut> vout;
             if (!stakeInput->CreateTxOuts(this, vout, nCredit)) {
                 LogPrintf("%s : failed to get scriptPubKey\n", __func__);
+                txNew.vin.clear();
+                txNew.vout.clear();
                 continue;
             }
             txNew.vout.insert(txNew.vout.end(), vout.begin(), vout.end());

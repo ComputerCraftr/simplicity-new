@@ -2058,6 +2058,9 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos)
         return error("%s : Deserialize or I/O error - %s", __func__, e.what());
     }
 
+    if (block.nVersion < 8 && block.vtx.size() > 1 && block.vtx[1].IsCoinStake())
+        block.nBlockType = POS;
+
     // Check the header
     // treat PoW and PoS blocks the same - don't waste time on redundant PoW checks that won't catch invalid PoS blocks anyway
     //if (block.IsProofOfWork() && !CheckProofOfWork(block.GetPoWHash(), block.nBits))
@@ -3035,8 +3038,24 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         // return state.DoS(100, error("ConnectBlock() : PoW period ended"),
             // REJECT_INVALID, "PoW-ended");
 
-    if (block.nVersion < 8 && /*block.GetHash() != Params().HashGenesisBlock() &&*/ !CheckWork(block, pindex->pprev))
-        return false;
+    if (block.nVersion < 8) {
+        if (/*block.GetHash() != Params().HashGenesisBlock() &&*/ !CheckWork(block, pindex->pprev))
+            return false;
+    } else if (pindex->nHeight >= 1000 && Params().NetworkID() != CBaseChainParams::REGTEST) {
+        int typeCount[ALGO_COUNT] = { };
+        CBlockIndex* idx = pindex;
+        for (int i = 0; i < 10; i++) { // check to make sure previous blocks aren't all same algo
+            typeCount[idx->nBlockType]++;
+            if (idx->pprev)
+                idx = idx->pprev;
+            else
+                break;
+        }
+        int highestCount = *std::max_element(typeCount, typeCount + ALGO_COUNT);
+        if (typeCount[0] == 0 || /*pindex->nBlockType == pindex->pprev->nBlockType ||*/ highestCount > 4)
+            return state.DoS(100, error("%s : too many blocks of the same type in a row, %i", __func__, highestCount),
+                REJECT_INVALID, "same-type");
+    }
 
     bool fScriptChecks = pindex->nHeight >= Checkpoints::GetTotalBlocksEstimate();
 
@@ -3267,10 +3286,10 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         if (pindex->nHeight < Params().WALLET_UPGRADE_BLOCK()) {
             nExpectedMint += nFees;
             if (!GetCoinAge(block.vtx[1], block.vtx[1].nTime, pindex->nHeight, nCoinAge))
-                return error("ConnectBlock() : %s unable to get coin age for coinstake", block.vtx[1].GetHash().ToString().substr(0,10).c_str());
+                return error("ConnectBlock() : %s unable to get coin age for coinstake", block.vtx[1].GetHash().GetHex().substr(0,10).c_str());
         } else {
             if (!GetCoinAge(block.vtx[1], block.nTime, pindex->nHeight, nCoinAge)) // need to use block time instead of transaction time since tx.nTime=0 after upgrade
-                return error("ConnectBlock() : %s unable to get coin age for coinstake", block.vtx[1].GetHash().ToString().substr(0,10).c_str());
+                return error("ConnectBlock() : %s unable to get coin age for coinstake", block.vtx[1].GetHash().GetHex().substr(0,10).c_str());
         }
 
         nExpectedMint += GetBlockValue(pindex->nHeight, true, nCoinAge);
@@ -3282,7 +3301,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     //LogPrintf("ConnectBlock() : INFO : Block reward (actual=%s vs limit=%s) maximum: %s\n", FormatMoney(pindex->nMint), FormatMoney(nExpectedMint), FormatMoney(pindex->nMint) == FormatMoney(nExpectedMint));
 
     //Check that the block does not overmint
-    if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) {
+    if (!IsBlockValueValid(block, nExpectedMint, pindex->nMint)) { //|| pindex->nMint < 0) {
         return state.DoS(100, error("ConnectBlock() : reward pays too much (actual=%s vs limit=%s)",
                                     FormatMoney(pindex->nMint), FormatMoney(nExpectedMint)),
                          REJECT_INVALID, "bad-cb-amount");
@@ -4089,6 +4108,10 @@ CBlockIndex* AddToBlockIndex(const CBlockHeader& block)
             // pindexNew->nStakeModifierChecksum = GetStakeModifierChecksum(pindexNew);
             // if (!CheckStakeModifierCheckpoints(pindexNew->nHeight, pindexNew->nStakeModifierChecksum))
                 // LogPrintf("AddToBlockIndex() : Rejected by stake modifier checkpoint height=%d, modifier=%s \n", pindexNew->nHeight, std::to_string(nStakeModifier));
+        } else {
+            // compute v2 stake modifier
+            pindexNew->nStakeModifierV2 = ComputeStakeModifier(pindexNew->pprev, block.GetHash());
+            //pindex->nStakeModifierV2 = ComputeStakeModifier(pindex->pprev, pindex->IsProofOfStake() ? block.vtx[1].vin[0].prevout.hash : block.vtx[0].vout[0].GetHash());
         }
     }
     pindexNew->nChainWork = (pindexNew->pprev ? pindexNew->pprev->nChainWork : 0) + GetBlockProof(*pindexNew);
@@ -4242,7 +4265,7 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
     if (nBlockCheckTime == 0)
         nBlockCheckTime = GetTime() - (2 * 24 * 60 * 60); // check the past 2 days worth of headers
 
-    if (!block.IsProofOfWork() && !block.IsProofOfStake())
+    if ((!block.IsProofOfWork() && !block.IsProofOfStake()) || (block.nVersion > 7 && block.nBlockType == POW_QUARK))
         return state.DoS(100, error("%s : block %s has an invalid type", __func__, block.GetHash().GetHex()));
 
     // Check proof of work matches claimed amount
@@ -4684,11 +4707,6 @@ static bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** pp
         pindex->hashProofOfWork = block.GetPoWHash();
     }*/
 
-    if (Params().IsStakeModifierV2(pindex->nHeight)) {
-        // compute v2 stake modifier
-        pindex->nStakeModifierV2 = ComputeStakeModifier(pindex->pprev, pindex->IsProofOfStake() ? block.vtx[1].vin[0].prevout.hash : block.vtx[0].vout[0].GetHash());
-    }
-
     if ((!fAlreadyCheckedBlock && !CheckBlock(block, state)) || !ContextualCheckBlock(block, state, pindex->pprev)) {
         if (state.IsInvalid() && !state.CorruptionPossible()) {
             pindex->nStatus |= BLOCK_FAILED_VALID;
@@ -4782,8 +4800,8 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, bool
 {
     // Preliminary checks
     int64_t nStartTime = GetTimeMillis();
-    
-    if (pblock->GetHash() != Params().HashGenesisBlock() && pfrom != NULL && pfrom->nVersion < SENDHEADERS_VERSION) {
+
+    if (pblock->GetHash() != Params().HashGenesisBlock() && pfrom != NULL && (pfrom->nVersion < SENDHEADERS_VERSION || !Params().HeadersFirstSyncingActive())) {
         //if we get this far, check if the prev block is our prev block, if not then request sync and return false
         BlockMap::iterator mi = mapBlockIndex.find(pblock->hashPrevBlock);
         if (mi == mapBlockIndex.end() || !((*mi).second->nStatus & BLOCK_HAVE_DATA)) {
@@ -5079,8 +5097,6 @@ bool CVerifyDB::VerifyDB(CCoinsView* coinsview, int nCheckLevel, int nCheckDepth
         // check level 0: read from disk
         if (!ReadBlockFromDisk(block, pindex))
             return error("VerifyDB() : *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
-        if (block.nVersion < 8 && block.vtx.size() > 1 && block.vtx[1].IsCoinStake())
-            block.nBlockType = POS;
         // check level 1: verify block validity
         if (nCheckLevel >= 1 && !CheckBlock(block, state))
             return error("VerifyDB() : *** found bad block at %d, hash=%s (%s)\n",
@@ -5122,8 +5138,6 @@ bool CVerifyDB::VerifyDB(CCoinsView* coinsview, int nCheckLevel, int nCheckDepth
             CBlock block;
             if (!ReadBlockFromDisk(block, pindex))
                 return error("VerifyDB() : *** ReadBlockFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
-            if (block.nVersion < 8 && block.vtx.size() > 1 && block.vtx[1].IsCoinStake())
-                block.nBlockType = POS;
             if (!ConnectBlock(block, state, pindex, coins, false))
                 return error("VerifyDB() : *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString());
         }
@@ -6129,7 +6143,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
             if (inv.type == MSG_BLOCK) {
                 UpdateBlockAvailability(pfrom->GetId(), inv.hash);
                 if (!fAlreadyHave && !fImporting && !fReindex && !mapBlocksInFlight.count(inv.hash)) {
-                    if (!Params().HeadersFirstSyncingActive() /*|| pfrom->nVersion < SENDHEADERS_VERSION*/) // old version does have getheaders
+                    if (!Params().HeadersFirstSyncingActive() || pfrom->nVersion < SENDHEADERS_VERSION) // old version does have getheaders
                     {
                         // Add this to the list of blocks to request
                         vToFetch.push_back(inv);
@@ -6630,8 +6644,8 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
     {
         CBlock block;
         vRecv >> block;
-
-        CInv inv(MSG_BLOCK, block.GetHash());
+        uint256 hashBlock = block.GetHash();
+        CInv inv(MSG_BLOCK, hashBlock);
         LogPrint("net", "received block %s peer=%d\n", inv.hash.ToString(), pfrom->id);
 
         pfrom->AddInventoryKnown(inv);
@@ -6642,7 +6656,8 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
         // Such an unrequested block may still be processed, subject to the
         // conditions in AcceptBlock().
         bool forceProcessing = pfrom->fWhitelisted && !IsInitialBlockDownload();
-        ProcessNewBlock(state, pfrom, &block, forceProcessing, NULL);
+        if (forceProcessing || !mapBlockIndex.count(hashBlock) || !(mapBlockIndex.at(hashBlock)->nStatus & BLOCK_HAVE_DATA)) //temporarily cut down on spam
+            ProcessNewBlock(state, pfrom, &block, forceProcessing, NULL);
         int nDoS;
         if (state.IsInvalid(nDoS)) {
             pfrom->PushMessage("reject", strCommand, (unsigned char)state.GetRejectCode(),
@@ -7184,7 +7199,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             if (nSyncStarted == 0 || pindexBestHeader->GetBlockTime() > GetAdjustedTime() - 6 * 60 * 60) { // NOTE: was "close to today" and 24h in Bitcoin
                 state.fSyncStarted = true;
                 nSyncStarted++;
-                if (!Params().HeadersFirstSyncingActive() /*|| pto->nVersion < SENDHEADERS_VERSION*/) // old version does have getheaders
+                if (!Params().HeadersFirstSyncingActive() || pto->nVersion < SENDHEADERS_VERSION) // old version does have getheaders
                 {
                     pto->PushMessage("getblocks", chainActive.GetLocator(chainActive.Tip()), uint256(0));
                 }

@@ -61,6 +61,7 @@ public:
     }
 };
 
+unsigned int nCreateBlockAlgo = POW_SCRYPT_SQUARED;
 uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockSize = 0;
 int64_t nLastCoinStakeSearchInterval = 0;
@@ -113,9 +114,12 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
     {   // Don't keep cs_main locked
         LOCK(cs_main);
         pindexPrev = chainActive.Tip();
-    }
 
-    pblock->nBlockType = fProofOfStake ? POS : POW_SCRYPT;
+        if (fProofOfStake)
+            pblock->nBlockType = POS;
+        else
+            pblock->nBlockType = nCreateBlockAlgo;
+    }
 
     //const int nHeight = pindexPrev->nHeight + 1;
 
@@ -514,7 +518,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         if (fProofOfStake) {
             unsigned int nExtraNonce = 0;
             IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
-            LogPrintf("CPUMiner : proof-of-stake block found %s \n", pblock->GetHash().ToString().c_str());
+            LogPrintf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str());
             if (pblock->IsZerocoinStake()) {
                 //Find the key associated with the zerocoin that is being staked
                 libzerocoin::CoinSpend spend = TxInToZerocoinSpend(pblock->vtx[1].vin[0]);
@@ -527,11 +531,11 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
 
                 //Sign block with the zSPL key
                 if (!SignBlockWithKey(*pblock, key)) {
-                    LogPrintf("%s: Signing new block with zSPL key failed \n", __func__);
+                    LogPrintf("%s: Signing new block with zSPL key failed\n", __func__);
                     return NULL;
                 }
             } else if (!SignBlock(*pblock, *pwallet)) {
-                LogPrintf("%s: Signing new block with UTXO key failed \n", __func__);
+                LogPrintf("%s: Signing new block with UTXO key failed\n", __func__);
                 return NULL;
             }
         }
@@ -659,8 +663,8 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
                 continue; // Do not stake until the upgrade block
             }
 
-            while (vNodes.empty() || pwallet->IsLocked() || !fMintableCoins ||
-                   (pwallet->GetBalance() > 0 && nReserveBalance >= pwallet->GetBalance()) || !masternodeSync.IsSynced()) {
+            while (pwallet->IsLocked() || !fMintableCoins || (pwallet->GetBalance() > 0 && nReserveBalance >= pwallet->GetBalance()) ||
+                   ((vNodes.empty() || !masternodeSync.IsSynced()) && Params().MiningRequiresPeers())) {
                 nLastCoinStakeSearchInterval = 0;
                 MilliSleep(5000);
                 // Do a separate 1 minute check here to ensure fMintableCoins is updated
@@ -704,7 +708,7 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
 
         //Stake miner main
         if (fProofOfStake) {
-            LogPrintf("CPUMiner : proof-of-stake block found %s \n", pblock->GetHash().ToString().c_str());
+            LogPrintf("CPUMiner : proof-of-stake block found %s\n", pblock->GetHash().ToString().c_str());
             if (pblock->IsZerocoinStake()) {
                 //Find the key associated with the zerocoin that is being staked
                 libzerocoin::CoinSpend spend = TxInToZerocoinSpend(pblock->vtx[1].vin[0]);
@@ -717,15 +721,15 @@ void BitcoinMiner(CWallet* pwallet, bool fProofOfStake)
 
                 //Sign block with the zSPL key
                 if (!SignBlockWithKey(*pblock, key)) {
-                    LogPrintf("%s: Signing new block with zSPL key failed \n", __func__);
+                    LogPrintf("%s: Signing new block with zSPL key failed\n", __func__);
                     continue;
                 }
             } else if (!SignBlock(*pblock, *pwallet)) {
-                LogPrintf("%s: Signing new block with UTXO key failed \n", __func__);
+                LogPrintf("%s: Signing new block with UTXO key failed\n", __func__);
                 continue;
             }
 
-            LogPrintf("CPUMiner : proof-of-stake block was signed %s \n", pblock->GetHash().ToString().c_str());
+            LogPrintf("CPUMiner : proof-of-stake block was signed %s\n", pblock->GetHash().ToString().c_str());
             SetThreadPriority(THREAD_PRIORITY_NORMAL);
             if (!ProcessBlockFound(pblock, *pwallet, reservekey)) {
                 fLastLoopOrphan = true;

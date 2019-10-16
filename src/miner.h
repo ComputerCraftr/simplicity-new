@@ -17,6 +17,8 @@ class CReserveKey;
 class CScript;
 class CWallet;
 
+extern unsigned int nCreateBlockAlgo;
+
 struct CBlockTemplate;
 
 /** Generate a new block, without valid proof-of-work */

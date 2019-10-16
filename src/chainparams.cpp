@@ -157,7 +157,8 @@ public:
         vAlertPubKey = ParseHex("03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1");
         nDefaultPort = 11957;
         bnProofOfWorkLimit[POS] = ~uint256(0) >> 24;
-        bnProofOfWorkLimit[POW_SCRYPT] = ~uint256(0) >> 11;
+        bnProofOfWorkLimit[POW_QUARK] = ~uint256(0) >> 16;
+        bnProofOfWorkLimit[POW_SCRYPT_SQUARED] = ~uint256(0) >> 11;
         nMaxReorganizationDepth = 100;
         nEnforceBlockUpgradeMajority = 6075; // 75%
         nRejectBlockOutdatedMajority = 7695; // 95%
@@ -187,7 +188,7 @@ public:
         nBlockZerocoinV2 = nZerocoinStartHeight + 20; //!> The block that zerocoin v2 becomes active - roughly Tuesday, May 8, 2018 4:00:00 AM GMT
         nEnforceNewSporkKey = 1566860400; //!> Sporks signed after Monday, August 26, 2019 11:00:00 PM GMT must use the new spork key
         nRejectOldSporkKey = 1569538800; //!> Fully reject old spork key after Thursday, September 26, 2019 11:00:00 PM GMT
-        nBlockStakeModifierlV2 = nMandatoryUpgradeBlock;
+        nBlockStakeModifierlV2 = -1;
         // Public coin spend enforcement
         nPublicZCSpends = nZerocoinStartHeight + 30;
 
@@ -225,6 +226,7 @@ public:
         genesis.nTime = 1517690700;
         genesis.nBits = 0x1f00ffff;
         genesis.nNonce = 561379;
+        genesis.nBlockType = POW_QUARK;
 
         hashGenesisBlock = genesis.GetHash();
         assert(genesis.hashMerkleRoot == uint256("0x40bdd3d5ae84b91a71190094a82948400eb3356e87c5376b64d79509cf552d84"));
@@ -303,7 +305,8 @@ public:
         pchMessageStart[3] = 0xc6;
         vAlertPubKey = ParseHex("03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134");
         nDefaultPort = 21957;
-        bnProofOfWorkLimit[POW_SCRYPT] = ~uint256(0) >> 8;
+        bnProofOfWorkLimit[POW_QUARK] = ~uint256(0) >> 12;
+        bnProofOfWorkLimit[POW_SCRYPT_SQUARED] = ~uint256(0) >> 8;
         nEnforceBlockUpgradeMajority = 3780; // 70%
         nRejectBlockOutdatedMajority = 4050; // 75%
         nToCheckBlockUpgradeMajority = 5400; // 4 days (1350*4)
@@ -414,11 +417,12 @@ public:
         nMinerThreads = 1;
         nTargetTimespan = 10 * 60; // Simplicity: 10 minutes
         nTargetSpacing = 48; // Simplicity: 48 seconds
-        bnProofOfWorkLimit[POW_SCRYPT] = ~uint256(0) >> 1;
+        bnProofOfWorkLimit[POW_QUARK] = ~uint256(0) >> 1;
+        bnProofOfWorkLimit[POW_SCRYPT_SQUARED] = ~uint256(0) >> 1;
         nMaturity = 100;
         nStakeMinDepth = 0;
         nMasternodeCountDrift = 4;
-        nUpgradeBlockVersion = 1;
+        //nUpgradeBlockVersion = 8;
         nModifierUpdateBlock = -1; //approx Mon, 17 Apr 2017 04:00:00 GMT
         nMaxMoneyOut = 43199500 * COIN;
         nZerocoinStartHeight = 300;

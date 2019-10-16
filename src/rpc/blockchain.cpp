@@ -171,7 +171,7 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     //////////
     ////////// Coin stake data ////////////////
     /////////
-    if (blockindex->IsProofOfStake()) {
+    if (block.IsProofOfStake()) {
         // First grab it
         uint256 hashProofOfStakeRet;
         std::unique_ptr <CStakeInput> stake;
@@ -188,8 +188,8 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
         stakeData.push_back(Pair("BlockFromHash", stake.get()->GetIndexFrom()->GetBlockHash().GetHex()));
         stakeData.push_back(Pair("BlockFromHeight", stake.get()->GetIndexFrom()->nHeight));
         stakeData.push_back(Pair("hashProofOfStake", hashProofOfStakeRet.GetHex()));
-        stakeData.push_back(Pair("stakeModifierHeight", ((stake->IsZSPL()) ? "Not available" : std::to_string(
-                stake->getStakeModifierHeight()))));
+        //stakeData.push_back(Pair("stakeModifierHeight", ((stake->IsZSPL()) ? "Not available" : std::to_string(
+                //stake->getStakeModifierHeight()))));
         result.push_back(Pair("CoinStake", stakeData));
     }
 
@@ -1617,7 +1617,7 @@ UniValue getblockindexstats(const UniValue& params, bool fHelp) {
         CAmount nValueOut = 0;
         const int ntx = block.vtx.size();
         nTxCount_all += ntx;
-        nTxCount = pindex->IsProofOfStake() ? nTxCount + ntx - 2 : nTxCount + ntx - 1;
+        nTxCount = block.IsProofOfStake() ? nTxCount + ntx - 2 : nTxCount + ntx - 1;
 
         // loop through each tx in block and save size and fee
         for (const CTransaction& tx : block.vtx) {

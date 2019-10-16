@@ -16,7 +16,7 @@
 
 uint256 CBlockHeader::GetPoWHash() const
 {
-    if (nVersion > 7 && nBlockType == POW_SCRYPT)
+    if (nVersion > 7 && nBlockType == POW_SCRYPT_SQUARED)
         return HashScryptSquared(BEGIN(nVersion), END(nNonce));
     else
         return HashQuark(BEGIN(nVersion), END(nNonce));

@@ -183,6 +183,32 @@ UniValue generate(const UniValue& params, bool fHelp)
     return blockHashes;
 }
 
+UniValue setminingalgo(const UniValue& params, bool fHelp)
+{
+    if (fHelp || params.size() < 1 || params.size() > 1)
+        throw std::runtime_error(
+            "setminingalgo algonum\n"
+            "\nSet 'algonum' to the number of the algo you'd like to mine.\n"
+            "POW_QUARK = 1, POW_SCRYPT_SQUARED = 2.\n"
+
+            "\nArguments:\n"
+            "1. algonum         (numeric, required) Set to the number of the algo to create blocks on.\n"
+
+            "\nExamples:\n" +
+            HelpExampleCli("setminingalgo", "1") +
+            HelpExampleCli("setminingalgo", "2") +
+            HelpExampleRpc("setminingalgo", "2"));
+    
+    int algo = params[0].get_int();
+    if (algo <= POS || algo >= ALGO_COUNT)
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Invalid algorithm");
+    
+    LOCK(cs_main);
+    nCreateBlockAlgo = algo;
+    
+    return NullUniValue;
+}
+
 UniValue setgenerate(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 2)

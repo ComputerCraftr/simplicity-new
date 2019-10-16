@@ -161,7 +161,7 @@ public:
     // proof-of-stake specific fields
     uint256 GetBlockTrust() const;
     uint64_t nStakeModifier;             // hash modifier for proof-of-stake
-    unsigned int nStakeModifierChecksum; // checksum of index; in-memory only
+    //unsigned int nStakeModifierChecksum; // checksum of index; in-memory only
     //COutPoint prevoutStake;
     //unsigned int nStakeTime;
     //uint256 hashProofOfStake;
@@ -176,7 +176,7 @@ public:
     unsigned int nTime;
     unsigned int nBits;
     unsigned int nNonce;
-    unsigned int nBlockType = POW_SCRYPT;
+    unsigned int nBlockType = POW_QUARK;
     uint256 nAccumulatorCheckpoint;
 
     //! (memory only) Sequential id assigned to distinguish order in which blocks are received.
@@ -206,7 +206,7 @@ public:
         nFlags = 0;
         nStakeModifier = 0;
         nStakeModifierV2 = uint256();
-        nStakeModifierChecksum = 0;
+        //nStakeModifierChecksum = 0;
         //prevoutStake.SetNull();
         //nStakeTime = 0;
         //hashProofOfStake = uint256();

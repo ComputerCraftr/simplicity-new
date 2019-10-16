@@ -19,7 +19,8 @@ static const unsigned int MAX_BLOCK_SIZE_LEGACY = 85673194;
 
 enum BlockType {
     POS = 0,
-    POW_SCRYPT = 1,
+    POW_QUARK = 1, //disabled
+    POW_SCRYPT_SQUARED = 2,
     ALGO_COUNT
 };
 
@@ -42,7 +43,7 @@ public:
     uint32_t nBits;
     uint32_t nNonce;
     uint256 nAccumulatorCheckpoint;
-    unsigned int nBlockType = POW_SCRYPT;
+    unsigned int nBlockType = POW_QUARK;
 
     CBlockHeader()
     {
@@ -76,7 +77,7 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
-        nBlockType = POW_SCRYPT;
+        nBlockType = POW_QUARK;
         nAccumulatorCheckpoint = 0;
     }
 

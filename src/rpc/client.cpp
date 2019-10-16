@@ -32,6 +32,7 @@ static const CRPCConvertParam vRPCConvertParams[] =
         {"getaddednodeinfo", 0},
         {"setgenerate", 0},
         {"setgenerate", 1},
+        {"setminingalgo", 0},
         {"generate", 0},
         {"getnetworkhashps", 0},
         {"getnetworkhashps", 1},

@@ -24,6 +24,13 @@ const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfSta
     return pindex;
 }
 
+const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, unsigned int algo)
+{
+    while (pindex && pindex->pprev && (pindex->nBlockType != algo))
+        pindex = pindex->pprev;
+    return pindex;
+}
+
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader* pblock, bool fProofOfStake)
 {
     /* current difficulty formula, pivx - DarkGravity v3, written by Evan Duffield - evan@dashpay.io */
@@ -44,14 +51,15 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     int height = pindexLast->nHeight + 1;
     if (height >= Params().WALLET_UPGRADE_BLOCK()) {
         uint256 bnTargetLimit = fProofOfStake ? Params().ProofOfStakeLimit() : Params().ProofOfWorkLimit(pblock->nBlockType);
-        //return bnTargetLimit.GetCompact(); // for testing
+        //if (!fProofOfStake)
+            //return bnTargetLimit.GetCompact(); // for testing
 
         int64_t nActualSpacing = 0; // difficulty for PoW and PoS are calculated separately
-        const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, fProofOfStake);
-        const CBlockIndex* pindexPrevPrev = GetLastBlockIndex(pindexPrev->pprev, fProofOfStake);
+        const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, pblock->nBlockType);
+        const CBlockIndex* pindexPrevPrev = GetLastBlockIndex(pindexPrev->pprev, pblock->nBlockType);
         nActualSpacing = pindexPrev->GetBlockTime() - pindexPrevPrev->GetBlockTime();
 
-        if (nActualSpacing < 0)
+        if (nActualSpacing <= 0)
             nActualSpacing = 1;
 
         // ppcoin: target change every block
@@ -59,8 +67,8 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
         uint256 bnNew;
         bnNew.SetCompact(pindexPrev->nBits);
 
-        bnNew *= ((Params().Interval() - 1) * (ALGO_COUNT * Params().TargetSpacing()) + nActualSpacing + nActualSpacing);
-        bnNew /= ((Params().Interval() + 1) * (ALGO_COUNT * Params().TargetSpacing())); // 160 second block time for PoW + 160 second block time for PoS = 80 second effective block time
+        bnNew *= ((Params().Interval() - 1) * ((ALGO_COUNT-1) * Params().TargetSpacing()) + nActualSpacing + nActualSpacing); // quark is disabled
+        bnNew /= ((Params().Interval() + 1) * ((ALGO_COUNT-1) * Params().TargetSpacing())); // 160 second block time for PoW + 160 second block time for PoS = 80 second effective block time
 
         if (Params().NetworkID() == CBaseChainParams::MAIN)
             if (height < (Params().WALLET_UPGRADE_BLOCK()+10) && height >= Params().WALLET_UPGRADE_BLOCK())
@@ -125,7 +133,7 @@ unsigned int GetLegacyNextWorkRequired(const CBlockIndex* pindexLast, const CBlo
     int64_t nTargetSpacing = 80;
     int64_t nTargetTimespan = 20 * 60;
 
-    uint256 bnTargetLimit = fProofOfStake ? ~uint256(0) >> 20 : ~uint256(0) >> 16;
+    uint256 bnTargetLimit = fProofOfStake ? ~uint256(0) >> 20 : Params().ProofOfWorkLimit(POW_QUARK);
 
     if (pindexLast == NULL)
         return bnTargetLimit.GetCompact(); // genesis block

@@ -204,19 +204,37 @@ bool CSplStake::CreateTxOuts(CWallet* pwallet, std::vector<CTxOut>& vout, CAmoun
         return false;
     }
 
-    if (whichType != TX_PUBKEY && whichType != TX_PUBKEYHASH)
-        return false; // only support pay to public key and pay to address
+    if (whichType != TX_PUBKEY && whichType != TX_PUBKEYHASH && whichType != TX_SCRIPTHASH) {
+        LogPrintf("CreateCoinStake : %s stake output transactions are not supported\n", GetTxnOutputType(whichType));
+        return false; // only support p2pk, p2pkh, and p2sh
+    }
 
     CScript scriptPubKey;
-    if (whichType == TX_PUBKEYHASH) // pay to address type
-    {
-        //convert to pay to public key type
+    if (whichType == TX_PUBKEYHASH) { // p2pkh type
+        //convert to p2pk type
         CKey key;
         CKeyID keyID = CKeyID(uint160(vSolutions[0]));
         if (!pwallet->GetKey(keyID, key))
             return false;
 
         scriptPubKey = GetScriptForRawPubKey(key.GetPubKey());
+    } else if (whichType == TX_SCRIPTHASH) {
+        CScriptID scriptID = CScriptID(uint160(vSolutions[0]));
+        CScript subscript;
+        if (!pwallet->GetCScript(scriptID, subscript) || !Solver(subscript, whichType, vSolutions))
+            return false;
+        for (const valtype& pubkey : vSolutions) {
+            CPubKey key(pubkey);
+            CKeyID keyID = CPubKey(key).GetID();
+            if (pwallet->HaveKey(keyID)) {
+                scriptPubKey = GetScriptForRawPubKey(key);
+                break;
+            }
+        }
+        if (scriptPubKey.empty()) {
+            LogPrintf("CreateCoinStake : scriptPubKey empty\n");
+            return false;
+        }
     } else
         scriptPubKey = scriptPubKeyKernel;
 
