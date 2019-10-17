@@ -3041,19 +3041,19 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.nVersion < 8) {
         if (/*block.GetHash() != Params().HashGenesisBlock() &&*/ !CheckWork(block, pindex->pprev))
             return false;
-    } else if (pindex->nHeight >= 1000 && Params().NetworkID() != CBaseChainParams::REGTEST) {
+    } else if (Params().NetworkID() != CBaseChainParams::REGTEST && pindex->nHeight >= 10 + Params().WALLET_UPGRADE_BLOCK() + Params().COINSTAKE_MIN_DEPTH()) {
+        int end = std::max(std::min(pindex->nHeight - 9 - Params().WALLET_UPGRADE_BLOCK() - Params().COINSTAKE_MIN_DEPTH(), 10), 0); // start checking one more at a time until we can enforce on all new blocks
         int typeCount[ALGO_COUNT] = { };
         CBlockIndex* idx = pindex;
-        for (int i = 0; i < 10; i++) { // check to make sure previous blocks aren't all same algo
+        for (int i = 0; i < end; i++) { // check to make sure previous blocks aren't all same algo
             typeCount[idx->nBlockType]++;
             if (idx->pprev)
                 idx = idx->pprev;
             else
                 break;
         }
-        int highestCount = *std::max_element(typeCount, typeCount + ALGO_COUNT);
-        if (typeCount[0] == 0 || /*pindex->nBlockType == pindex->pprev->nBlockType ||*/ highestCount > 4)
-            return state.DoS(100, error("%s : too many blocks of the same type in a row, %i", __func__, highestCount),
+        if ((end == 10 && typeCount[POS] == 0) || (pindex->pprev && pindex->nBlockType == pindex->pprev->nBlockType) || *std::max_element(typeCount, typeCount + ALGO_COUNT) > 5) //should probably change to 4 to require blocks from 3 algos
+            return state.DoS(100, error("%s : too many blocks of the same type in a row", __func__),
                 REJECT_INVALID, "same-type");
     }
 
@@ -3520,8 +3520,8 @@ void static UpdateTip(CBlockIndex* pindexNew)
     nTimeBestReceived = GetTime();
     mempool.AddTransactionsUpdated(1);
 
-    LogPrintf("UpdateTip: new best=%s  height=%d version=%d  log2_work=%.8g  tx=%lu  date=%s progress=%f  cache=%u\n",
-        chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(), chainActive.Tip()->nVersion, log(chainActive.Tip()->nChainWork.getdouble()) / log(2.0), (unsigned long)chainActive.Tip()->nChainTx,
+    LogPrintf("UpdateTip: new best=%s  height=%d version=%d type=%d  log2_work=%.8g  tx=%lu  date=%s progress=%f  cache=%u\n",
+        chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(), chainActive.Tip()->nVersion, chainActive.Tip()->nBlockType, log(chainActive.Tip()->nChainWork.getdouble()) / log(2.0), (unsigned long)chainActive.Tip()->nChainTx,
         DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
         Checkpoints::GuessVerificationProgress(chainActive.Tip()), (unsigned int)pcoinsTip->GetCacheSize());
 
@@ -4265,7 +4265,7 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
     if (nBlockCheckTime == 0)
         nBlockCheckTime = GetTime() - (2 * 24 * 60 * 60); // check the past 2 days worth of headers
 
-    if ((!block.IsProofOfWork() && !block.IsProofOfStake()) || (block.nVersion > 7 && block.nBlockType == POW_QUARK))
+    if ((!block.IsProofOfWork() && !block.IsProofOfStake())) //|| (block.nVersion > 7 && block.nBlockType == POW_QUARK))
         return state.DoS(100, error("%s : block %s has an invalid type", __func__, block.GetHash().GetHex()));
 
     // Check proof of work matches claimed amount

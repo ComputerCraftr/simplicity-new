@@ -19,7 +19,7 @@ static const unsigned int MAX_BLOCK_SIZE_LEGACY = 85673194;
 
 enum BlockType {
     POS = 0,
-    POW_QUARK = 1, //disabled
+    POW_QUARK = 1,
     POW_SCRYPT_SQUARED = 2,
     ALGO_COUNT
 };

@@ -57,8 +57,8 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHead
     uint256 bnNew;
     bnNew.SetCompact(pindexPrev->nBits);
 
-    bnNew *= ((Params().Interval() - 1) * ((ALGO_COUNT-1) * Params().TargetSpacing()) + nActualSpacing + nActualSpacing); // quark is disabled
-    bnNew /= ((Params().Interval() + 1) * ((ALGO_COUNT-1) * Params().TargetSpacing())); // 160 second block time for PoW + 160 second block time for PoS = 80 second effective block time
+    bnNew *= ((Params().Interval() - 1) * (ALGO_COUNT * Params().TargetSpacing()) + nActualSpacing + nActualSpacing);
+    bnNew /= ((Params().Interval() + 1) * (ALGO_COUNT * Params().TargetSpacing())); // 160 second block time for PoW + 160 second block time for PoS = 80 second effective block time
 
     if (Params().NetworkID() == CBaseChainParams::MAIN) {
         int height = pindexLast->nHeight + 1;

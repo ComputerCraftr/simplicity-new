@@ -176,19 +176,19 @@ public:
         /** Height or Time Based Activations **/
         nMandatoryUpgradeBlock = 1000000;
         nUpgradeBlockVersion = 8; //Block headers must be this version after upgrade block
-        nModifierUpdateBlock = -1;
+        nModifierUpdateBlock = 0;
         nZerocoinStartHeight = 2100000000;
         //nZerocoinStartTime = 1508214600;
-        nBlockEnforceSerialRange = -1; //Enforce serial range starting this block
+        nBlockEnforceSerialRange = 0; //Enforce serial range starting this block
         nBlockRecalculateAccumulators = nZerocoinStartHeight + 10; //Trigger a recalculation of accumulators
         nBlockFirstFraudulent = nZerocoinStartHeight; //First block that bad serials emerged
         nBlockLastGoodCheckpoint = nZerocoinStartHeight; //Last valid accumulator checkpoint
-        nBlockEnforceInvalidUTXO = -1; //Start enforcing the invalid UTXO's
+        nBlockEnforceInvalidUTXO = 0; //Start enforcing the invalid UTXO's
         nInvalidAmountFiltered = 0 * COIN; //Amount of invalid coins filtered through exchanges, that should be considered valid
         nBlockZerocoinV2 = nZerocoinStartHeight + 20; //!> The block that zerocoin v2 becomes active - roughly Tuesday, May 8, 2018 4:00:00 AM GMT
         nEnforceNewSporkKey = 1566860400; //!> Sporks signed after Monday, August 26, 2019 11:00:00 PM GMT must use the new spork key
         nRejectOldSporkKey = 1569538800; //!> Fully reject old spork key after Thursday, September 26, 2019 11:00:00 PM GMT
-        nBlockStakeModifierlV2 = -1;
+        nBlockStakeModifierlV2 = 0;
         // Public coin spend enforcement
         nPublicZCSpends = nZerocoinStartHeight + 30;
 
@@ -316,28 +316,28 @@ public:
         nMaturity = 15;
         nStakeMinDepth = 100;
         nMasternodeCountDrift = 4;
-        nMandatoryUpgradeBlock = -1;
+        nMandatoryUpgradeBlock = 0;
         nUpgradeBlockVersion = 8;
-        nModifierUpdateBlock = -1; //approx Mon, 17 Apr 2017 04:00:00 GMT
+        nModifierUpdateBlock = 0; //approx Mon, 17 Apr 2017 04:00:00 GMT
         nMaxMoneyOut = 500000000 * COIN;
         nZerocoinStartHeight = 2100000000;
         //nZerocoinStartTime = 1501776000;
-        nBlockEnforceSerialRange = -1; //Enforce serial range starting this block
+        nBlockEnforceSerialRange = 0; //Enforce serial range starting this block
         nBlockRecalculateAccumulators = nZerocoinStartHeight + 10; //Trigger a recalculation of accumulators
         nBlockFirstFraudulent = nZerocoinStartHeight; //First block that bad serials emerged
         nBlockLastGoodCheckpoint = nZerocoinStartHeight; //Last valid accumulator checkpoint
-        nBlockEnforceInvalidUTXO = -1; //Start enforcing the invalid UTXO's
+        nBlockEnforceInvalidUTXO = 0; //Start enforcing the invalid UTXO's
         nInvalidAmountFiltered = 0; //Amount of invalid coins filtered through exchanges, that should be considered valid
         nBlockZerocoinV2 = nZerocoinStartHeight + 20; //!> The block that zerocoin v2 becomes active
         nEnforceNewSporkKey = 1566860400; //!> Sporks signed after Monday, August 26, 2019 11:00:00 PM GMT must use the new spork key
         nRejectOldSporkKey = 1569538800; //!> Reject old spork key after Thursday, September 26, 2019 11:00:00 PM GMT
-        nBlockStakeModifierlV2 = -1;
+        nBlockStakeModifierlV2 = 0;
         // Public coin spend enforcement
         nPublicZCSpends = nZerocoinStartHeight + 30;
 
         nStartTreasuryBlock = 10;
         nTreasuryBlockStep = 20; //24 * 6 * 60 / nTargetSpacing; // Ten times per day
-        nMasternodeTiersStartHeight = -1;
+        nMasternodeTiersStartHeight = 0;
         vDevFundPubKey1=CPubKey(ParseHex("03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134"));
         vDevFundPubKey2=CPubKey(ParseHex("0242044552e508e9379b2fa8a9011aa017ddcc5b54b975100f5f43ebd53de3d194"));
         vCommunityFundWallet="8r9dZJmXFidaZyXijEtD7LuDB3wThJKiut";
@@ -423,12 +423,12 @@ public:
         nStakeMinDepth = 0;
         nMasternodeCountDrift = 4;
         //nUpgradeBlockVersion = 8;
-        nModifierUpdateBlock = -1; //approx Mon, 17 Apr 2017 04:00:00 GMT
+        nModifierUpdateBlock = 0; //approx Mon, 17 Apr 2017 04:00:00 GMT
         nMaxMoneyOut = 43199500 * COIN;
         nZerocoinStartHeight = 300;
         nBlockZerocoinV2 = 300;
         //nZerocoinStartTime = 1501776000;
-        nBlockEnforceSerialRange = -1; //Enforce serial range starting this block
+        nBlockEnforceSerialRange = 0; //Enforce serial range starting this block
         nBlockRecalculateAccumulators = 2100000000; //Trigger a recalculation of accumulators
         nBlockFirstFraudulent = 2100000000; //First block that bad serials emerged
         nBlockLastGoodCheckpoint = 2100000000; //Last valid accumulator checkpoint
