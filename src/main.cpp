@@ -4133,6 +4133,8 @@ bool ReceivedBlockTransactions(const CBlock& block, CValidationState& state, CBl
 {
     if (block.IsProofOfStake())
         pindexNew->SetProofOfStake();
+    else
+        pindexNew->nBlockType = block.nBlockType;
     pindexNew->nTx = block.vtx.size();
     pindexNew->nChainTx = 0;
     pindexNew->nFile = pos.nFile;
