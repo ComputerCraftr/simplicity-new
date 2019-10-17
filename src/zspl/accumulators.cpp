@@ -313,7 +313,7 @@ bool InvalidCheckpointRange(int nHeight)
     return nHeight > Params().Zerocoin_Block_LastGoodCheckpoint() && nHeight < Params().Zerocoin_Block_RecalculateAccumulators();
 }
 
-bool ValidateAccumulatorCheckpoint(const CBlock& block, CBlockIndex* pindex, AccumulatorMap& mapAccumulators)
+/*bool ValidateAccumulatorCheckpoint(const CBlock& block, CBlockIndex* pindex, AccumulatorMap& mapAccumulators)
 {
     //V1 accumulators are completely phased out by the time this code hits the public and begins generating new checkpoints
     //It is VERY IMPORTANT that when this is being run and height < v2_start, then zSPL need to be disabled at the same time!!
@@ -338,7 +338,7 @@ bool ValidateAccumulatorCheckpoint(const CBlock& block, CBlockIndex* pindex, Acc
         return error("%s : new accumulator checkpoint generated on a block that is not multiple of 10", __func__);
 
     return true;
-}
+}*/
 
 
 //########################## Witness

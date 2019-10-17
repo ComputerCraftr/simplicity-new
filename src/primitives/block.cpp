@@ -24,9 +24,9 @@ uint256 CBlockHeader::GetPoWHash() const
 
 uint256 CBlockHeader::GetHash() const
 {
-    if (nVersion > 19)
+    /*if (nVersion > 19)
         return Hash(BEGIN(nVersion), END(nAccumulatorCheckpoint));
-    else if (nVersion > 6)
+    else*/ if (nVersion > 1)
         return Hash(BEGIN(nVersion), END(nNonce));
     else
         return GetPoWHash();

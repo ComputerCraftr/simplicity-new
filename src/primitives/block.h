@@ -42,7 +42,7 @@ public:
     uint32_t nTime;
     uint32_t nBits;
     uint32_t nNonce;
-    uint256 nAccumulatorCheckpoint;
+    //uint256 nAccumulatorCheckpoint;
     unsigned int nBlockType = POW_QUARK;
 
     CBlockHeader()
@@ -65,8 +65,8 @@ public:
             READWRITE(nBlockType);
 
         //zerocoin active, header changes to include accumulator checksum
-        if (nVersion > 19)
-            READWRITE(nAccumulatorCheckpoint);
+        //if (nVersion > 19)
+            //READWRITE(nAccumulatorCheckpoint);
     }
 
     void SetNull()
@@ -78,7 +78,7 @@ public:
         nBits = 0;
         nNonce = 0;
         nBlockType = POW_QUARK;
-        nAccumulatorCheckpoint = 0;
+        //nAccumulatorCheckpoint = 0;
     }
 
     bool IsNull() const
@@ -161,7 +161,7 @@ public:
         block.nBits          = nBits;
         block.nNonce         = nNonce;
         block.nBlockType     = nBlockType;
-        block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
+        //block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
         return block;
     }
 

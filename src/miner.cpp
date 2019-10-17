@@ -61,7 +61,7 @@ public:
     }
 };
 
-unsigned int nCreateBlockAlgo = POW_SCRYPT_SQUARED;
+unsigned int nCreateBlockAlgo = POW_QUARK;
 uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockSize = 0;
 int64_t nLastCoinStakeSearchInterval = 0;
@@ -512,7 +512,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             }
         }
 
-        pblock->nAccumulatorCheckpoint = pCheckpointCache.second.second;
+        //pblock->nAccumulatorCheckpoint = pCheckpointCache.second.second;
         pblocktemplate->vTxSigOps[0] = GetLegacySigOpCount(pblock->vtx[0]);
 
         if (fProofOfStake) {
