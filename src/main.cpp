@@ -4833,7 +4833,7 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, bool
     if (pblock->GetHash() != Params().HashGenesisBlock() && pfrom != NULL && (pfrom->nVersion < SENDHEADERS_VERSION || !Params().HeadersFirstSyncingActive())) {
         //if we get this far, check if the prev block is our prev block, if not then request sync and return false
         BlockMap::iterator mi = mapBlockIndex.find(pblock->hashPrevBlock);
-        if (mi == mapBlockIndex.end() || !((*mi).second->nStatus & BLOCK_HAVE_DATA)) {
+        if (mi == mapBlockIndex.end()) {
             pfrom->PushMessage("getblocks", chainActive.GetLocator(), uint256(0));
             return false;
         }
@@ -6182,6 +6182,9 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
                     {
                         // Add this to the list of blocks to request
                         vToFetch.push_back(inv);
+                        // Mark block as in flight already, even though the actual "getdata" message only goes out
+                        // later (within the same cs_main lock, though).
+                        MarkBlockAsInFlight(pfrom->GetId(), inv.hash);
                         LogPrint("net", "getblocks (%d) %s to peer=%d\n", pindexBestHeader->nHeight, inv.hash.ToString(), pfrom->id);
                     }
                     else
