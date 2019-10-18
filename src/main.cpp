@@ -189,7 +189,7 @@ namespace {
      * million to make it highly unlikely for users to have issues with this
      * filter.
      *
-     * Memory used: 1.7MB
+     * Memory used: 1.3 MB
      */
     boost::scoped_ptr<CRollingBloomFilter> recentRejects;
     uint256 hashRecentRejectsChainTip;
@@ -621,7 +621,7 @@ void FindNextBlocksToDownload(NodeId nodeid, unsigned int count, std::vector<CBl
         // are not yet downloaded and not in flight to vBlocks. In the mean time, update
         // pindexLastCommonBlock as long as all ancestors are already downloaded, or if it's
         // already part of our chain (and therefore don't need it even if pruned).
-        for(CBlockIndex* pindex: vToFetch) {
+        for (CBlockIndex* pindex : vToFetch) {
             if (!pindex->IsValid(BLOCK_VALID_TREE)) {
                 // We consider the chain that this peer is on invalid.
                 return;
@@ -3066,7 +3066,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.nVersion < 8) {
         if (/*block.GetHash() != Params().HashGenesisBlock() &&*/ !CheckWork(block, pindex->pprev))
             return false;
-    } else if (Params().NetworkID() != CBaseChainParams::REGTEST && pindex->nHeight >= 10 + Params().WALLET_UPGRADE_BLOCK() + Params().COINSTAKE_MIN_DEPTH()) {
+    } else if (Params().NetworkID() == CBaseChainParams::MAIN && pindex->nHeight >= 10 + Params().WALLET_UPGRADE_BLOCK() + Params().COINSTAKE_MIN_DEPTH()) {
         int end = std::max(std::min(pindex->nHeight - 9 - Params().WALLET_UPGRADE_BLOCK() - Params().COINSTAKE_MIN_DEPTH(), 10), 0); // start checking one more at a time until we can enforce on all new blocks
         int typeCount[ALGO_COUNT] = { };
         CBlockIndex* idx = pindex;
@@ -4298,7 +4298,7 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
         return state.DoS(100, error("%s : block %s has an invalid type", __func__, block.GetHash().GetHex()));
 
     // Check proof of work matches claimed amount
-    if ((fVerifyingBlocks || fReindex || block.nTime >= nBlockCheckTime) && fCheckPOW && block.IsProofOfWork() && !CheckProofOfWork(&block))
+    if ((fVerifyingBlocks || fReindex || block.nTime >= nBlockCheckTime || block.nBlockType != POW_SCRYPT_SQUARED) && fCheckPOW && block.IsProofOfWork() && !CheckProofOfWork(&block))
         return state.DoS(50, error("%s : proof of work failed", __func__),
             REJECT_INVALID, "high-hash");
 
@@ -6307,7 +6307,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
         // we must use CBlocks, as CBlockHeaders won't include the 0x00 nTx count at the end
         std::vector<CBlock> vHeaders;
         int nLimit = MAX_HEADERS_RESULTS;
-        LogPrint("net", "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.IsNull() ? "end" : hashStop.ToString(), pfrom->GetId());
+        LogPrint("net", "getheaders %d to %s from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.IsNull() ? "end" : hashStop.GetHex(), pfrom->GetId());
         for (; pindex; pindex = chainActive.Next(pindex))
         {
             vHeaders.push_back(pindex->GetBlockHeader());
