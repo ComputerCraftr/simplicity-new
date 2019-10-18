@@ -3082,6 +3082,30 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
                 REJECT_INVALID, "same-type");
     }
 
+    if (block.IsProofOfStake()) {
+        uint256 hashProofOfStake = 0;
+        std::unique_ptr<CStakeInput> stake;
+
+        if (!CheckProofOfStake(block, hashProofOfStake, stake, pindex->pprev->nHeight))
+            return state.DoS(100, error("%s: proof of stake check failed", __func__));
+
+        if (!stake)
+            return error("%s: null stake ptr", __func__);
+
+        // uint256 hash = block.GetHash();
+        // if (!mapProofOfStake.count(hash)) // add to mapProofOfStake
+            // mapProofOfStake.insert(std::make_pair(hash, hashProofOfStake));
+    }
+
+    // ppcoin: record proof-of-stake hash value
+    /*if (pindex->IsProofOfStake()) {
+        if (!mapProofOfStake.count(hash))
+            LogPrintf("AddToBlockIndex() : hashProofOfStake not found in map \n");
+        pindex->hashProofOfStake = mapProofOfStake[hash];
+    } else {
+        pindex->hashProofOfWork = block.GetPoWHash();
+    }*/
+
     bool fScriptChecks = pindex->nHeight >= Checkpoints::GetTotalBlocksEstimate();
 
     // Do not allow blocks that contain transactions which 'overwrite' older transactions,
@@ -4709,32 +4733,8 @@ static bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** pp
         if (fTooFarAhead) return true;      // Block height is too high
     }
 
-    if (block.IsProofOfStake()) {
-        uint256 hashProofOfStake = 0;
-        std::unique_ptr<CStakeInput> stake;
-
-        if (!CheckProofOfStake(block, hashProofOfStake, stake, pindex->pprev->nHeight))
-            return state.DoS(100, error("%s: proof of stake check failed", __func__));
-
-        if (!stake)
-            return error("%s: null stake ptr", __func__);
-
-        // uint256 hash = block.GetHash();
-        // if (!mapProofOfStake.count(hash)) // add to mapProofOfStake
-            // mapProofOfStake.insert(std::make_pair(hash, hashProofOfStake));
-    }
-
     // ppcoin: compute chain trust score
     pindex->bnChainTrust = (pindex->pprev ? pindex->pprev->bnChainTrust : 0) + pindex->GetBlockTrust();
-
-    // ppcoin: record proof-of-stake hash value
-    /*if (pindex->IsProofOfStake()) {
-        if (!mapProofOfStake.count(hash))
-            LogPrintf("AddToBlockIndex() : hashProofOfStake not found in map \n");
-        pindex->hashProofOfStake = mapProofOfStake[hash];
-    } else {
-        pindex->hashProofOfWork = block.GetPoWHash();
-    }*/
 
     if ((!fAlreadyCheckedBlock && !CheckBlock(block, state)) || !ContextualCheckBlock(block, state, pindex->pprev)) {
         if (state.IsInvalid() && !state.CorruptionPossible()) {
