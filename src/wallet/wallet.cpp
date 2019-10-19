@@ -1240,8 +1240,9 @@ bool CWalletTx::WriteToDisk()
  * Scan the block chain (starting in pindexStart) for transactions
  * from or to us. If fUpdate is true, found transactions that already
  * exist in the wallet will be updated.
+ * @returns -1 if process was cancelled or the number of tx added to the wallet.
  */
-int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
+int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate, bool fromStartup)
 {
     int ret = 0;
     int64_t nNow = GetTime();
@@ -1265,6 +1266,10 @@ int CWallet::ScanForWalletTransactions(CBlockIndex* pindexStart, bool fUpdate)
         while (pindex) {
             if (pindex->nHeight % 100 == 0 && dProgressTip - dProgressStart > 0.0)
                 ShowProgress(_("Rescanning..."), std::max(1, std::min(99, (int)((Checkpoints::GuessVerificationProgress(pindex, false) - dProgressStart) / (dProgressTip - dProgressStart) * 100))));
+
+            if (fromStartup && ShutdownRequested()) {
+                return -1;
+            }
 
             CBlock block;
             ReadBlockFromDisk(block, pindex);
@@ -2596,7 +2601,6 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
 {
     if (!fFileBacked)
         return DB_LOAD_OK;
-    fFirstRunRet = false;
     DBErrors nLoadWalletRet = CWalletDB(strWalletFile, "cr+").LoadWallet(this);
     if (nLoadWalletRet == DB_NEED_REWRITE) {
         if (CDB::Rewrite(strWalletFile, "\x04pool")) {
@@ -2608,9 +2612,11 @@ DBErrors CWallet::LoadWallet(bool& fFirstRunRet)
         }
     }
 
+    // This wallet is in its first run if all of these are empty
+    fFirstRunRet = mapKeys.empty() && mapCryptedKeys.empty() && mapMasterKeys.empty() && setWatchOnly.empty() && mapScripts.empty();
+
     if (nLoadWalletRet != DB_LOAD_OK)
         return nLoadWalletRet;
-    fFirstRunRet = !vchDefaultKey.IsValid();
 
     uiInterface.LoadWallet(this);
 
@@ -2680,16 +2686,6 @@ bool CWallet::DelAddressBook(const CTxDestination& address)
         return false;
     CWalletDB(strWalletFile).ErasePurpose(CBitcoinAddress(address).ToString());
     return CWalletDB(strWalletFile).EraseName(CBitcoinAddress(address).ToString());
-}
-
-bool CWallet::SetDefaultKey(const CPubKey& vchPubKey)
-{
-    if (fFileBacked) {
-        if (!CWalletDB(strWalletFile).WriteDefaultKey(vchPubKey))
-            return false;
-    }
-    vchDefaultKey = vchPubKey;
-    return true;
 }
 
 /**

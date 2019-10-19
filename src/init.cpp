@@ -309,13 +309,24 @@ void Shutdown()
  */
 void HandleSIGTERM(int)
 {
-    fRequestShutdown = true;
+    StartShutdown();
 }
 
 void HandleSIGHUP(int)
 {
     fReopenDebugLog = true;
 }
+
+#ifndef WIN32
+static void registerSignalHandler(int signal, void(*handler)(int))
+{
+    struct sigaction sa;
+    sa.sa_handler = handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+    sigaction(signal, &sa, nullptr);
+}
+#endif
 
 bool static InitError(const std::string& str)
 {
@@ -749,10 +760,20 @@ bool AppInitServers()
     return true;
 }
 
-/** Initialize simplicity.
- *  @pre Parameters should be parsed and config file should be read.
- */
-bool AppInit2()
+[[noreturn]] static void new_handler_terminate()
+{
+    // Rather than throwing std::bad-alloc if allocation fails, terminate
+    // immediately to (try to) avoid chain corruption.
+    // Since LogPrintf may itself allocate memory, set the handler directly
+    // to terminate first.
+    std::set_new_handler(std::terminate);
+    LogPrintf("Error: Out of memory. Terminating.\n");
+
+    // The log was successful, terminate now.
+    std::terminate();
+};
+
+bool AppInitBasicSetup()
 {
 // ********************************************************* Step 1: setup
 #ifdef _MSC_VER
@@ -792,24 +813,30 @@ bool AppInit2()
     }
 
 
-    // Clean shutdown on SIGTERM
-    struct sigaction sa;
-    sa.sa_handler = HandleSIGTERM;
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = 0;
-    sigaction(SIGTERM, &sa, NULL);
-    sigaction(SIGINT, &sa, NULL);
+    // Clean shutdown on SIGTERMx
+    registerSignalHandler(SIGTERM, HandleSIGTERM);
+    registerSignalHandler(SIGINT, HandleSIGTERM);
 
     // Reopen debug.log on SIGHUP
-    struct sigaction sa_hup;
-    sa_hup.sa_handler = HandleSIGHUP;
-    sigemptyset(&sa_hup.sa_mask);
-    sa_hup.sa_flags = 0;
-    sigaction(SIGHUP, &sa_hup, NULL);
+    registerSignalHandler(SIGHUP, HandleSIGHUP);
 
     // Ignore SIGPIPE, otherwise it will bring the daemon down if the client closes unexpectedly
     signal(SIGPIPE, SIG_IGN);
 #endif
+
+    std::set_new_handler(new_handler_terminate);
+
+    return true;
+}
+
+/** Initialize simplicity.
+ *  @pre Parameters should be parsed and config file should be read.
+ */
+bool AppInit2()
+{
+    // ********************************************************* Step 1: setup
+    if (!AppInitBasicSetup())
+        return false;
 
     // ********************************************************* Step 2: parameter interactions
     // Set this early so that parameter interactions go to console
@@ -933,7 +960,6 @@ bool AppInit2()
     else if (nScriptCheckThreads > MAX_SCRIPTCHECK_THREADS)
         nScriptCheckThreads = MAX_SCRIPTCHECK_THREADS;
 
-    fServer = GetBoolArg("-server", false);
     setvbuf(stdout, NULL, _IOLBF, 0); /// ***TODO*** do we still need this after -printtoconsole is gone?
 
     // Staking needs a CWallet instance, so make sure wallet is enabled
@@ -1089,13 +1115,11 @@ bool AppInit2()
      * that the server is there and will be ready later).  Warmup mode will
      * be disabled when initialisation is finished.
      */
-    if (fServer) {
+    if (GetBoolArg("-server", false)) {
         uiInterface.InitMessage.connect(SetRPCWarmupStatus);
         if (!AppInitServers())
             return InitError(_("Unable to start HTTP server. See debug log for details."));
     }
-
-    int64_t nStart;
 
 // ********************************************************* Step 5: Backup wallet and verify wallet database integrity
 #ifdef ENABLE_WALLET
@@ -1412,14 +1436,15 @@ bool AppInit2()
     nCoinCacheSize = nTotalCache / 300; // coins in memory require around 300 bytes
 
     bool fLoaded = false;
-    while (!fLoaded) {
+    while (!fLoaded && !ShutdownRequested()) {
         bool fReset = fReindex;
         std::string strLoadError;
 
         uiInterface.InitMessage(_("Loading block index..."));
 
-        nStart = GetTimeMillis();
         do {
+            const int64_t load_block_index_start_time = GetTimeMillis();
+
             try {
                 UnloadBlockIndex();
                 delete pcoinsTip;
@@ -1441,6 +1466,9 @@ bool AppInit2()
                 if (fReindex)
                     pblocktree->WriteReindexing(true);
 
+                // End loop if shutdown was requested
+                if (ShutdownRequested()) break;
+
                 // Simplicity: load previous sessions sporks if we have them.
                 uiInterface.InitMessage(_("Loading sporks..."));
                 LoadSporksFromDB();
@@ -1448,6 +1476,7 @@ bool AppInit2()
                 uiInterface.InitMessage(_("Loading block index..."));
                 std::string strBlockIndexError = "";
                 if (!LoadBlockIndex(strBlockIndexError)) {
+                    if (ShutdownRequested()) break;
                     strLoadError = _("Error loading block database");
                     strLoadError = strprintf("%s : %s", strLoadError, strBlockIndexError);
                     break;
@@ -1551,9 +1580,10 @@ bool AppInit2()
 
             fVerifyingBlocks = false;
             fLoaded = true;
+            LogPrintf(" block index %15dms\n", GetTimeMillis() - load_block_index_start_time);
         } while (false);
 
-        if (!fLoaded) {
+        if (!fLoaded && !ShutdownRequested()) {
             // first suggest a reindex
             if (!fReset) {
                 bool fRet = uiInterface.ThreadSafeMessageBox(
@@ -1575,11 +1605,10 @@ bool AppInit2()
     // As LoadBlockIndex can take several minutes, it's possible the user
     // requested to kill the GUI during the last operation. If so, exit.
     // As the program has not fully started yet, Shutdown() is possibly overkill.
-    if (fRequestShutdown) {
+    if (ShutdownRequested()) {
         LogPrintf("Shutdown requested. Exiting.\n");
         return false;
     }
-    LogPrintf(" block index %15dms\n", GetTimeMillis() - nStart);
 
     boost::filesystem::path est_path = GetDataDir() / FEE_ESTIMATES_FILENAME;
     CAutoFile est_filein(fopen(est_path.string().c_str(), "rb"), SER_DISK, CLIENT_VERSION);
@@ -1615,7 +1644,7 @@ bool AppInit2()
         uiInterface.InitMessage(_("Loading wallet..."));
         fVerifyingBlocks = true;
 
-        nStart = GetTimeMillis();
+        const int64_t nWalletStartTime = GetTimeMillis();
         bool fFirstRun = true;
         pwalletMain = new CWallet(strWalletFile);
         DBErrors nLoadWalletRet = pwalletMain->LoadWallet(fFirstRun);
@@ -1655,17 +1684,18 @@ bool AppInit2()
             RandAddSeedPerfmon();
 
             CPubKey newDefaultKey;
-            if (pwalletMain->GetKeyFromPool(newDefaultKey)) {
-                pwalletMain->SetDefaultKey(newDefaultKey);
-                if (!pwalletMain->SetAddressBook(pwalletMain->vchDefaultKey.GetID(), "", "receive"))
-                    strErrors << _("Cannot write default address") << "\n";
+            // Top up the keypool
+            if (!pwalletMain->TopUpKeyPool()) {
+                // Error generating keys
+                InitError(_("Unable to generate initial key") += "\n");
+                return error("%s %s", __func__ , "Unable to generate initial key");
             }
 
             pwalletMain->SetBestChain(chainActive.GetLocator());
         }
 
-        LogPrintf("%s", strErrors.str());
-        LogPrintf(" wallet      %15dms\n", GetTimeMillis() - nStart);
+        LogPrintf("Init errors: %s\n", strErrors.str());
+        LogPrintf("Wallet completed loading in %15dms\n", GetTimeMillis() - nWalletStartTime);
         zwalletMain = new CzSPLWallet(pwalletMain->strWalletFile);
         pwalletMain->setZWallet(zwalletMain);
 
@@ -1685,9 +1715,11 @@ bool AppInit2()
         if (chainActive.Tip() && chainActive.Tip() != pindexRescan) {
             uiInterface.InitMessage(_("Rescanning..."));
             LogPrintf("Rescanning last %i blocks (from block %i)...\n", chainActive.Height() - pindexRescan->nHeight, pindexRescan->nHeight);
-            nStart = GetTimeMillis();
-            pwalletMain->ScanForWalletTransactions(pindexRescan, true);
-            LogPrintf(" rescan      %15dms\n", GetTimeMillis() - nStart);
+            const int64_t nWalletRescanTime = GetTimeMillis();
+            if (pwalletMain->ScanForWalletTransactions(pindexRescan, true, true) == -1) {
+                return error("Shutdown requested over the txs scan. Exiting.");
+            }
+            LogPrintf("Rescan completed in %15dms\n", GetTimeMillis() - nWalletRescanTime);
             pwalletMain->SetBestChain(chainActive.GetLocator());
             nWalletDBUpdated++;
 
@@ -1904,6 +1936,11 @@ bool AppInit2()
     obfuScationPool.InitCollateralAddress();
 
     threadGroup.create_thread(boost::bind(&ThreadCheckObfuScationPool));
+
+    if (ShutdownRequested()) {
+        LogPrintf("Shutdown requested. Exiting.\n");
+        return false;
+    }
 
     // ********************************************************* Step 11: start node
 
