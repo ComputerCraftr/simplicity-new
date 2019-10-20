@@ -2084,11 +2084,11 @@ bool ReadBlockFromDisk(CBlock& block, const CDiskBlockPos& pos)
     }
 
     if (block.nVersion < 8 && block.vtx.size() > 1 && block.vtx[1].IsCoinStake())
-        block.nBlockType = POS;
+        block.fPreForkPoS = true;
 
     // Check the header
     // treat PoW and PoS blocks the same - don't waste time on redundant PoW checks that won't catch invalid PoS blocks anyway
-    if (block.IsProofOfWork() && block.nBlockType != POW_SCRYPT_SQUARED && !CheckProofOfWork(&block))
+    if (block.IsProofOfWork() && CBlockHeader::GetAlgo(block.nVersion) != POW_SCRYPT_SQUARED && !CheckProofOfWork(&block))
         return error("ReadBlockFromDisk : Errors in block header");
 
     return true;
@@ -2966,7 +2966,7 @@ bool ReindexAccumulators(std::list<uint256>& listMissingCheckpoints, std::string
     return true;
 }
 
-bool UpdateZSPLSupply(const CBlock& block, CBlockIndex* pindex, bool fJustCheck)
+/*bool UpdateZSPLSupply(const CBlock& block, CBlockIndex* pindex, bool fJustCheck)
 {
     std::list<CZerocoinMint> listMints;
     bool fFilterInvalid = pindex->nHeight >= Params().Zerocoin_Block_RecalculateAccumulators();
@@ -2974,7 +2974,7 @@ bool UpdateZSPLSupply(const CBlock& block, CBlockIndex* pindex, bool fJustCheck)
     std::list<libzerocoin::CoinDenomination> listSpends = ZerocoinSpendListFromBlock(block, fFilterInvalid);
 
     // Initialize zerocoin supply to the supply from previous block
-    if (pindex->pprev && pindex->pprev->GetBlockHeader().nVersion >= Params().Zerocoin_HeaderVersion()) {
+    if (pindex->pprev && pindex->pprev->nVersion >= Params().Zerocoin_HeaderVersion()) {
         for (auto& denom : libzerocoin::zerocoinDenomList) {
             pindex->mapZerocoinSupply.at(denom) = pindex->pprev->GetZcMints(denom);
         }
@@ -3026,7 +3026,7 @@ bool UpdateZSPLSupply(const CBlock& block, CBlockIndex* pindex, bool fJustCheck)
         LogPrint("zero", "%s coins for denomination %d pubcoin %s\n", __func__, denom, pindex->mapZerocoinSupply.at(denom));
 
     return true;
-}
+}*/
 
 static int64_t nTimeVerify = 0;
 static int64_t nTimeConnect = 0;
@@ -3066,18 +3066,18 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.nVersion < 8) {
         if (/*block.GetHash() != Params().HashGenesisBlock() &&*/ !CheckWork(block, pindex->pprev))
             return false;
-    } else if (Params().NetworkID() == CBaseChainParams::MAIN && pindex->nHeight >= 10 + Params().WALLET_UPGRADE_BLOCK() + Params().COINSTAKE_MIN_DEPTH()) {
+    } else if (Params().NetworkID() == CBaseChainParams::MAIN && pindex->nVersion > 7 && pindex->nHeight >= 10 + Params().WALLET_UPGRADE_BLOCK() + Params().COINSTAKE_MIN_DEPTH()) {
         int end = std::max(std::min(pindex->nHeight - 9 - Params().WALLET_UPGRADE_BLOCK() - Params().COINSTAKE_MIN_DEPTH(), 10), 0); // start checking one more at a time until we can enforce on all new blocks
         int typeCount[ALGO_COUNT] = { };
         CBlockIndex* idx = pindex;
         for (int i = 0; i < end; i++) { // check to make sure previous blocks aren't all same algo
-            typeCount[idx->nBlockType]++;
+            typeCount[CBlockHeader::GetAlgo(idx->nVersion)]++;
             if (idx->pprev)
                 idx = idx->pprev;
             else
                 break;
         }
-        if ((end == 10 && typeCount[POS] == 0) || (pindex->pprev && pindex->nBlockType == pindex->pprev->nBlockType) || *std::max_element(typeCount, typeCount + ALGO_COUNT) > 5) //should probably change to 4 to require blocks from 3 algos
+        if ((end == 10 && typeCount[POS] == 0) || (pindex->pprev && CBlockHeader::GetAlgo(pindex->nVersion) == CBlockHeader::GetAlgo(pindex->pprev->nVersion)) || *std::max_element(typeCount, typeCount + ALGO_COUNT) > 5) //should probably change to 4 to require blocks from 3 algos
             return state.DoS(100, error("%s : too many blocks of the same type in a row", __func__),
                 REJECT_INVALID, "same-type");
     }
@@ -3305,9 +3305,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     }
 
     //Track zSPL money supply in the block index
-    if (!UpdateZSPLSupply(block, pindex, fJustCheck))
-        return state.DoS(100, error("%s: Failed to calculate new zSPL supply for block=%s height=%d", __func__,
-                                    hashBlock.GetHex(), pindex->nHeight), REJECT_INVALID);
+    //if (!UpdateZSPLSupply(block, pindex, fJustCheck))
+        //return state.DoS(100, error("%s: Failed to calculate new zSPL supply for block=%s height=%d", __func__,
+                                    //hashBlock.GetHex(), pindex->nHeight), REJECT_INVALID);
 
     // track money supply and mint amount info
     CAmount nMoneySupplyPrev = pindex->pprev ? pindex->pprev->nMoneySupply : 0;
@@ -3570,8 +3570,8 @@ void static UpdateTip(CBlockIndex* pindexNew)
     mempool.AddTransactionsUpdated(1);
 
     LogPrintf("UpdateTip: new best=%s  height=%d version=%d type=%d  log2_work=%.8g  tx=%lu  date=%s progress=%f  cache=%u\n",
-        chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(), chainActive.Tip()->nVersion, chainActive.Tip()->nBlockType, log(chainActive.Tip()->nChainWork.getdouble()) / log(2.0), (unsigned long)chainActive.Tip()->nChainTx,
-        DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
+        chainActive.Tip()->GetBlockHash().ToString(), chainActive.Height(), chainActive.Tip()->nVersion, chainActive.Tip()->nVersion > 7 ? CBlockHeader::GetAlgo(chainActive.Tip()->nVersion) : chainActive.Tip()->IsProofOfWork(),
+        log(chainActive.Tip()->nChainWork.getdouble()) / log(2.0), (unsigned long)chainActive.Tip()->nChainTx, DateTimeStrFormat("%Y-%m-%d %H:%M:%S", chainActive.Tip()->GetBlockTime()),
         Checkpoints::GuessVerificationProgress(chainActive.Tip()), (unsigned int)pcoinsTip->GetCacheSize());
 
     cvBlockChange.notify_all();
@@ -3582,12 +3582,12 @@ void static UpdateTip(CBlockIndex* pindexNew)
         int nUpgraded = 0;
         const CBlockIndex* pindex = chainActive.Tip();
         for (int i = 0; i < 100 && pindex != NULL; i++) {
-            if (pindex->nVersion > CBlock::CURRENT_VERSION)
+            if (pindex->nVersion > ALGO_POW_SCRYPT_SQUARED)
                 ++nUpgraded;
             pindex = pindex->pprev;
         }
         if (nUpgraded > 0)
-            LogPrintf("%s: %d of last 100 blocks above version %d\n", __func__, nUpgraded, (int)CBlock::CURRENT_VERSION);
+            LogPrintf("%s: %d of last 100 blocks above version %d\n", __func__, nUpgraded, ALGO_POW_SCRYPT_SQUARED);
         if (nUpgraded > 100/2)
         {
             // strMiscWarning is read by GetWarnings(), called by Qt and the JSON-RPC code to warn the user:
@@ -4184,8 +4184,6 @@ bool ReceivedBlockTransactions(const CBlock& block, CValidationState& state, CBl
 {
     if (block.IsProofOfStake())
         pindexNew->SetProofOfStake();
-    else
-        pindexNew->nBlockType = block.nBlockType;
     pindexNew->nTx = block.vtx.size();
     pindexNew->nChainTx = 0;
     pindexNew->nFile = pos.nFile;
@@ -4318,11 +4316,11 @@ bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool f
     if (nBlockCheckTime == 0)
         nBlockCheckTime = GetTime() - (2 * 24 * 60 * 60); // check the past 2 days worth of headers
 
-    if ((!block.IsProofOfWork() && !block.IsProofOfStake())) //|| (block.nVersion > 7 && block.nBlockType == POW_QUARK))
+    if (block.nVersion > 7 && !block.IsProofOfWork() && !block.IsProofOfStake()) //&& CBlockHeader::GetAlgo(block.nVersion) == POW_QUARK)
         return state.DoS(100, error("%s : block %s has an invalid type", __func__, block.GetHash().GetHex()));
 
     // Check proof of work matches claimed amount
-    if ((fVerifyingBlocks || fReindex || block.nTime >= nBlockCheckTime || block.nBlockType != POW_SCRYPT_SQUARED) && fCheckPOW && block.IsProofOfWork() && !CheckProofOfWork(&block))
+    if ((fVerifyingBlocks || fReindex || block.nTime >= nBlockCheckTime || CBlockHeader::GetAlgo(block.nVersion) != POW_SCRYPT_SQUARED) && fCheckPOW && block.IsProofOfWork() && !CheckProofOfWork(&block))
         return state.DoS(50, error("%s : proof of work failed", __func__),
             REJECT_INVALID, "high-hash");
 
@@ -4567,7 +4565,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
     }
 
     // Version 20 header must be used after Params().Zerocoin_StartHeight(). And never before.
-    if (nHeight >= Params().Zerocoin_StartHeight()) {
+    /*if (nHeight >= Params().Zerocoin_StartHeight()) {
         if (block.nVersion < Params().Zerocoin_HeaderVersion() && Params().NetworkID() != CBaseChainParams::REGTEST)
             return state.DoS(50, error("ContextualCheckBlockHeader() : block version must be at least %d after ZerocoinStartHeight", Params().Zerocoin_HeaderVersion()),
             REJECT_INVALID, "block-version");
@@ -4575,7 +4573,7 @@ bool ContextualCheckBlockHeader(const CBlockHeader& block, CValidationState& sta
         if (block.nVersion >= Params().Zerocoin_HeaderVersion())
             return state.DoS(50, error("ContextualCheckBlockHeader() : block version must be below %d before ZerocoinStartHeight", Params().Zerocoin_HeaderVersion()),
             REJECT_INVALID, "block-version");
-    }
+    }*/
 
     // Check that the block chain matches the known block chain up to a checkpoint
     if (!Checkpoints::CheckBlock(nHeight, hash))
@@ -4840,7 +4838,7 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, bool
     }
 
     if (pblock->nVersion < 8 && pblock->vtx.size() > 1 && pblock->vtx[1].IsCoinStake())
-        pblock->nBlockType = POS;
+        pblock->fPreForkPoS = true;
 
     // check block
     bool checked = CheckBlock(*pblock, state);

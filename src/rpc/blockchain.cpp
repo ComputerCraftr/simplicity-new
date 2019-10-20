@@ -156,7 +156,7 @@ UniValue blockToJSON(const CBlock& block, const CBlockIndex* blockindex, bool tx
     if (pnext)
         result.push_back(Pair("nextblockhash", pnext->GetBlockHash().GetHex()));
 
-    result.push_back(Pair("type", (int)blockindex->nBlockType));
+    result.push_back(Pair("type", blockindex->nVersion > 7 ? CBlockHeader::GetAlgo(blockindex->nVersion) : blockindex->IsProofOfWork()));
     //result.push_back(Pair("modifier", strprintf("%016x", blockindex->nStakeModifier)));
     result.push_back(Pair("modifierV2", blockindex->nStakeModifierV2.GetHex()));
 

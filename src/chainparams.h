@@ -130,7 +130,7 @@ public:
     int Zerocoin_MintRequiredConfirmations() const { return nMintRequiredConfirmations; }
     int Zerocoin_RequiredAccumulation() const { return nRequiredAccumulation; }
     int Zerocoin_DefaultSpendSecurity() const { return nDefaultSecurityLevel; }
-    int Zerocoin_HeaderVersion() const { return nZerocoinHeaderVersion; }
+    //int Zerocoin_HeaderVersion() const { return nZerocoinHeaderVersion; }
     int Zerocoin_RequiredStakeDepth() const { return nZerocoinRequiredStakeDepth; }
 
     /** Height or Time Based Activations **/
@@ -212,7 +212,7 @@ protected:
     int nMintRequiredConfirmations;
     int nRequiredAccumulation;
     int nDefaultSecurityLevel;
-    int nZerocoinHeaderVersion;
+    //int nZerocoinHeaderVersion;
     int64_t nBudget_Fee_Confirmations;
     int nZerocoinStartHeight;
     //int nZerocoinStartTime;

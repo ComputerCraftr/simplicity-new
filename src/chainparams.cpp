@@ -226,7 +226,6 @@ public:
         genesis.nTime = 1517690700;
         genesis.nBits = 0x1f00ffff;
         genesis.nNonce = 561379;
-        genesis.nBlockType = POW_QUARK;
 
         hashGenesisBlock = genesis.GetHash();
         assert(genesis.hashMerkleRoot == uint256("0x40bdd3d5ae84b91a71190094a82948400eb3356e87c5376b64d79509cf552d84"));
@@ -273,7 +272,7 @@ public:
         nMintRequiredConfirmations = 20; //the maximum amount of confirmations until accumulated in 19
         nRequiredAccumulation = 1;
         nDefaultSecurityLevel = 100; //full security level for accumulators
-        nZerocoinHeaderVersion = 20; //Block headers must be this version once zerocoin is active
+        //nZerocoinHeaderVersion = 20; //Block headers must be this version once zerocoin is active
         nZerocoinRequiredStakeDepth = 200; //The required confirmations for a zspl to be stakable
 
         nBudget_Fee_Confirmations = 6; // Number of confirmations for the finalization fee

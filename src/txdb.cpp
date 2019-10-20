@@ -245,7 +245,6 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                 pindexNew->nTime = diskindex.nTime;
                 pindexNew->nBits = diskindex.nBits;
                 pindexNew->nNonce = diskindex.nNonce;
-                pindexNew->nBlockType = diskindex.nBlockType;
                 pindexNew->nStatus = diskindex.nStatus;
                 pindexNew->nTx = diskindex.nTx;
 
@@ -269,7 +268,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                 //pindexNew->hashProofOfWork = diskindex.hashProofOfWork;
 
                 // treat PoW and PoS blocks the same - don't waste time on redundant PoW checks that won't catch invalid PoS blocks anyway
-                if (pindexNew->IsProofOfWork() && pindexNew->nBlockType != POW_SCRYPT_SQUARED) {
+                if (pindexNew->IsProofOfWork() && CBlockHeader::GetAlgo(pindexNew->nVersion) != POW_SCRYPT_SQUARED) {
                     CBlockHeader header = pindexNew->GetBlockHeader();
                     if (!CheckProofOfWork(&header))
                         return error("LoadBlockIndex() : CheckProofOfWork failed: %s", pindexNew->ToString());

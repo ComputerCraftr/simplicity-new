@@ -24,6 +24,15 @@ enum BlockType {
     ALGO_COUNT
 };
 
+enum AlgoFlags {
+    ALGO_POS = 1<<29,
+    ALGO_POW_QUARK = 2<<29,
+    ALGO_POW_SCRYPT_SQUARED = 3<<29,
+    ALGO_VERSION = 7<<29,
+    ALGO_POS_VERSION = ALGO_POS,
+    ALGO_POW_VERSION = 6<<29
+};
+
 /** Nodes collect new transactions into a block, hash them into a hash tree,
  * and scan through nonce values to make the block's hash satisfy proof-of-work
  * requirements.  When they solve the proof-of-work, they broadcast the block
@@ -43,7 +52,9 @@ public:
     uint32_t nBits;
     uint32_t nNonce;
     //uint256 nAccumulatorCheckpoint;
-    unsigned int nBlockType = POW_QUARK;
+
+    // memory only
+    bool fPreForkPoS = false;
 
     CBlockHeader()
     {
@@ -61,8 +72,6 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
-        if (nVersion > 7)
-            READWRITE(nBlockType);
 
         //zerocoin active, header changes to include accumulator checksum
         //if (nVersion > 19)
@@ -77,7 +86,7 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
-        nBlockType = POW_QUARK;
+        fPreForkPoS = false;
         //nAccumulatorCheckpoint = 0;
     }
 
@@ -90,12 +99,38 @@ public:
     bool IsProofOfStake() const
     {
         //return (vtx.size() > 1 && vtx[1].IsCoinStake());
-        return nBlockType == POS;
+        return (nVersion & ALGO_VERSION) == ALGO_POS_VERSION || (nVersion < CBlockHeader::CURRENT_VERSION && fPreForkPoS);
     }
 
     bool IsProofOfWork() const
     {
-        return nBlockType > POS && nBlockType < ALGO_COUNT;
+        return (nVersion & ALGO_POW_VERSION) || (nVersion < CBlockHeader::CURRENT_VERSION && !fPreForkPoS);
+    }
+
+    static int GetAlgo(int version)
+    {
+        switch (version & ALGO_VERSION) {
+            case ALGO_POS:
+                return POS;
+            default:
+            case ALGO_POW_QUARK:
+                return POW_QUARK;
+            case ALGO_POW_SCRYPT_SQUARED:
+                return POW_SCRYPT_SQUARED;
+        }
+    }
+
+    static int GetVer(int algo)
+    {
+        switch (algo) {
+            case POS:
+                return ALGO_POS;
+            default:
+            case POW_QUARK:
+                return ALGO_POW_QUARK;
+            case POW_SCRYPT_SQUARED:
+                return ALGO_POW_SCRYPT_SQUARED;
+        }
     }
 
     uint256 GetPoWHash() const;
@@ -160,7 +195,7 @@ public:
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
-        block.nBlockType     = nBlockType;
+        block.fPreForkPoS    = fPreForkPoS;
         //block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
         return block;
     }

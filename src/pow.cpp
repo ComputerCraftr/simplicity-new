@@ -24,26 +24,26 @@ const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfSta
     return pindex;
 }
 
-const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, unsigned int algo)
+const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, int algo)
 {
-    while (pindex && pindex->pprev && (pindex->nBlockType != algo))
+    while (pindex && pindex->pprev && (CBlockHeader::GetAlgo(pindex->nVersion) != algo))
         pindex = pindex->pprev;
     return pindex;
 }
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader* pblock, bool fProofOfStake)
 {
-    uint256 bnTargetLimit = fProofOfStake ? Params().ProofOfStakeLimit() : Params().ProofOfWorkLimit(pblock->nBlockType);
+    uint256 bnTargetLimit = fProofOfStake ? Params().ProofOfStakeLimit() : Params().ProofOfWorkLimit(pblock->nVersion > 7 ? CBlockHeader::GetAlgo(pblock->nVersion) : POW_QUARK);
     //if (!fProofOfStake) return bnTargetLimit.GetCompact(); // for testing
 
     if (pindexLast == NULL)
         return bnTargetLimit.GetCompact(); // genesis block
 
-    const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, pblock->nBlockType);
+    const CBlockIndex* pindexPrev = pblock->nVersion > 7 ? GetLastBlockIndex(pindexLast, CBlockHeader::GetAlgo(pblock->nVersion)) : GetLastBlockIndex(pindexLast, fProofOfStake);
     if (pindexPrev->pprev == NULL)
         return bnTargetLimit.GetCompact(); // first block
 
-    const CBlockIndex* pindexPrevPrev = GetLastBlockIndex(pindexPrev->pprev, pblock->nBlockType);
+    const CBlockIndex* pindexPrevPrev = pblock->nVersion > 7 ? GetLastBlockIndex(pindexPrev->pprev, CBlockHeader::GetAlgo(pblock->nVersion)) : GetLastBlockIndex(pindexPrev->pprev, fProofOfStake);
     if (pindexPrevPrev->pprev == NULL)
         return bnTargetLimit.GetCompact(); // second block
 
@@ -120,7 +120,7 @@ bool CheckProofOfWork(const CBlockHeader* pblock)
     bnTarget.SetCompact(pblock->nBits, &fNegative, &fOverflow);
 
     // Check range
-    if (fNegative || bnTarget == 0 || fOverflow || bnTarget > Params().ProofOfWorkLimit(pblock->nBlockType))
+    if (fNegative || bnTarget == 0 || fOverflow || bnTarget > Params().ProofOfWorkLimit(pblock->nVersion > 7 ? CBlockHeader::GetAlgo(pblock->nVersion) : POW_QUARK))
         return error("CheckProofOfWork() : nBits below minimum work");
 
     // Check proof of work matches claimed amount

@@ -16,7 +16,7 @@
 
 uint256 CBlockHeader::GetPoWHash() const
 {
-    if (nVersion > 7 && nBlockType == POW_SCRYPT_SQUARED)
+    if (GetAlgo(nVersion) == POW_SCRYPT_SQUARED)
         return HashScryptSquared(BEGIN(nVersion), END(nNonce));
     else
         return HashQuark(BEGIN(nVersion), END(nNonce));
@@ -135,7 +135,7 @@ std::string CBlock::ToString() const
         hashPrevBlock.ToString(),
         hashMerkleRoot.ToString(),
         nTime, nBits, nNonce,
-        nBlockType,
+        nVersion > 7 ? GetAlgo(nVersion) : IsProofOfWork(),
         vtx.size());
     for (unsigned int i = 0; i < vtx.size(); i++)
     {

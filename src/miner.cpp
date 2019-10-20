@@ -108,6 +108,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
     if (!pblocktemplate.get())
         return NULL;
     CBlock* pblock = &pblocktemplate->block; // pointer for convenience
+    int ver = 0;
 
     // Tip
     CBlockIndex* pindexPrev = nullptr;
@@ -116,19 +117,20 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
         pindexPrev = chainActive.Tip();
 
         if (fProofOfStake)
-            pblock->nBlockType = POS;
+            ver = ALGO_POS;
         else
-            pblock->nBlockType = nCreateBlockAlgo;
+            ver = CBlockHeader::GetVer(nCreateBlockAlgo);
     }
 
     //const int nHeight = pindexPrev->nHeight + 1;
 
     // Make sure to create the correct block version after zerocoin is enabled
-    bool fZerocoinActive = chainActive.Height() + 1 >= Params().Zerocoin_StartHeight();
-    if (fZerocoinActive)
+    bool fZerocoinActive = pindexPrev->nHeight + 1 >= Params().Zerocoin_StartHeight();
+    /*if (fZerocoinActive)
         pblock->nVersion = std::max(Params().Zerocoin_HeaderVersion(), CBlock::CURRENT_VERSION);
     else
-        pblock->nVersion = Params().WALLET_UPGRADE_VERSION();
+        pblock->nVersion = Params().WALLET_UPGRADE_VERSION();*/
+    pblock->nVersion = ver;
 
     // -regtest only: allow overriding block.nVersion with
     // -blockversion=N to test forking scenarios
