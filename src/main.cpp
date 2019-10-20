@@ -2158,7 +2158,7 @@ int64_t GetBlockValue(int nHeight, bool fProofOfStake, uint64_t nCoinAge)
             nSubsidy = 1000 * COIN;
     }
 
-    if (nHeight > Params().WALLET_UPGRADE_BLOCK()) {
+    if (nHeight > Params().WALLET_UPGRADE_BLOCK() && nSubsidy > 10 * COIN) {
         int64_t nMoneySupply = chainActive[nHeight-1] ? chainActive[nHeight-1]->nMoneySupply : chainActive.Tip()->nMoneySupply;
         if (nMoneySupply + nSubsidy > Params().MaxMoneyOut()) // soft supply cap
             nSubsidy = 10 * COIN;
