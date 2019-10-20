@@ -479,7 +479,7 @@ public:
 
         // v1/v2 modifier selection.
         if (!Params().IsStakeModifierV2(nHeight)) {
-            READWRITE(nStakeModifier);
+            //READWRITE(nStakeModifier);
         } else {
             READWRITE(nStakeModifierV2);
         }

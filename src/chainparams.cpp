@@ -118,7 +118,7 @@ bool CChainParams::HasStakeMinAgeOrDepth(const int contextHeight, const uint32_t
         const int utxoFromBlockHeight, const uint32_t utxoFromBlockTime) const
 {
     // before stake modifier V2, the age required was 2 * 60 * 60 (2 hours) / not required on regtest
-    if (!IsStakeModifierV2(contextHeight))
+    if (!IsStakeModifierV2(contextHeight) || contextHeight < WALLET_UPGRADE_BLOCK())
         return (NetworkID() == CBaseChainParams::REGTEST || (utxoFromBlockTime + 7200 <= contextTime));
 
     // after stake modifier V2, we require the utxo to be nStakeMinDepth deep in the chain
@@ -167,11 +167,11 @@ public:
         nTargetTimespan = 20 * 60; // Simplicity: 20 minutes
         nTargetSpacing = 80; // Simplicity: 80 seconds
         nMaturity = 50;
-        nStakeMinDepth = 200;
+        nStakeMinDepth = 600;
         nFutureTimeDriftPoW = 7200;
         nFutureTimeDriftPoS = 180;
         nMasternodeCountDrift = 20;
-        nMaxMoneyOut = 21000000000 * COIN;
+        nMaxMoneyOut = 7000000000 * COIN; // 7 billion
 
         /** Height or Time Based Activations **/
         nMandatoryUpgradeBlock = 1000000;
@@ -194,7 +194,7 @@ public:
 
         nStartTreasuryBlock = nMandatoryUpgradeBlock;
         nTreasuryBlockStep = 1 * 24 * 60 * 60 / nTargetSpacing; // Once per day
-        nMasternodeTiersStartHeight = nStartTreasuryBlock;
+        nMasternodeTiersStartHeight = 2100000000;
         vDevFundPubKey1=CPubKey(ParseHex("03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1"));
         vDevFundPubKey2=CPubKey(ParseHex("03b9dc2f0d817abf63e488b6b1780de1f6226280fc9961e2ab4c3b1e943377ad00"));
         vCommunityFundWallet="R4VpCXiZJHFRgviU7qs6VFiQBpqg8dqmSs";

@@ -2132,16 +2132,17 @@ int64_t GetBlockValue(int nHeight, bool fProofOfStake, uint64_t nCoinAge)
         return nHeight >= Params().TreasuryStartBlock() ? 90 * COIN : 100 * COIN;
     //LogPrintf("GetBlockValue(): INFO : Block reward=%s chainActive height=%s supply=%s chainActive supply=%s\n", nHeight, chainActive.Height(), chainActive[nHeight-1]->nMoneySupply/COIN, chainActive.Tip()->nMoneySupply/COIN);
 
-    int64_t nRewardCoinYear = 22.38 * CENT; // 22.38% interest
+    int64_t nRewardCoinYear = 10 * CENT; // 10% interest
+    int64_t nRewardCoinYearOld = 22.38 * CENT; // 22.38% interest
     int64_t nSubsidy = 0;
 
     if (fProofOfStake) {
         if (nCoinAge == uint64_t(0))
             nSubsidy = nRewardCoinYear / 500;
         else if (nHeight >= Params().WALLET_UPGRADE_BLOCK())
-            nSubsidy = nCoinAge * nRewardCoinYear / 365.25;
+            nSubsidy = nCoinAge * nRewardCoinYear / 365.25; // will be reduced
         else
-            nSubsidy = nCoinAge * nRewardCoinYear * 33 / (365 * 33 + 8);
+            nSubsidy = nCoinAge * nRewardCoinYearOld * 33 / (365 * 33 + 8);
     } else {
         if (nHeight <= 200)
             nSubsidy = 15000000 * COIN;
@@ -2151,8 +2152,16 @@ int64_t GetBlockValue(int nHeight, bool fProofOfStake, uint64_t nCoinAge)
             nSubsidy = 500 * COIN;
         else if (nHeight < Params().WALLET_UPGRADE_BLOCK())
             nSubsidy = 100 * COIN;
+        else if (nHeight < 1300000)
+            nSubsidy = 10000 * COIN;
         else
             nSubsidy = 1000 * COIN;
+    }
+
+    if (nHeight > Params().WALLET_UPGRADE_BLOCK()) {
+        int64_t nMoneySupply = chainActive[nHeight-1] ? chainActive[nHeight-1]->nMoneySupply : chainActive.Tip()->nMoneySupply;
+        if (nMoneySupply + nSubsidy > Params().MaxMoneyOut()) // soft supply cap
+            nSubsidy = 10 * COIN;
     }
 
     if (nHeight >= Params().TreasuryStartBlock())
@@ -3066,7 +3075,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
     if (block.nVersion < 8) {
         if (/*block.GetHash() != Params().HashGenesisBlock() &&*/ !CheckWork(block, pindex->pprev))
             return false;
-    } else if (Params().NetworkID() == CBaseChainParams::MAIN && pindex->nVersion > 7 && pindex->nHeight >= 10 + Params().WALLET_UPGRADE_BLOCK() + Params().COINSTAKE_MIN_DEPTH()) {
+    } else if (Params().NetworkID() != CBaseChainParams::REGTEST && pindex->nVersion > 7 && pindex->nHeight >= 10 + Params().WALLET_UPGRADE_BLOCK() + Params().COINSTAKE_MIN_DEPTH()) {
         int end = std::max(std::min(pindex->nHeight - 9 - Params().WALLET_UPGRADE_BLOCK() - Params().COINSTAKE_MIN_DEPTH(), 10), 0); // start checking one more at a time until we can enforce on all new blocks
         int typeCount[ALGO_COUNT] = { };
         CBlockIndex* idx = pindex;
@@ -3077,8 +3086,9 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             else
                 break;
         }
-        if ((end == 10 && typeCount[POS] == 0) || (pindex->pprev && CBlockHeader::GetAlgo(pindex->nVersion) == CBlockHeader::GetAlgo(pindex->pprev->nVersion)) || *std::max_element(typeCount, typeCount + ALGO_COUNT) > 5) //should probably change to 4 to require blocks from 3 algos
-            return state.DoS(100, error("%s : too many blocks of the same type in a row", __func__),
+        int highestCount = *std::max_element(typeCount, typeCount + ALGO_COUNT);
+        if ((end == 10 && typeCount[POS] == 0) || /*(pindex->pprev && CBlockHeader::GetAlgo(pindex->nVersion) == CBlockHeader::GetAlgo(pindex->pprev->nVersion)) ||*/ (highestCount > 4 && highestCount != typeCount[POS]))
+            return state.DoS(100, error("%s : too many blocks of the same type in a row, %d", __func__, highestCount),
                 REJECT_INVALID, "same-type");
     }
 

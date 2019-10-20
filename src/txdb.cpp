@@ -258,7 +258,7 @@ bool CBlockTreeDB::LoadBlockIndexGuts()
                 pindexNew->nMoneySupply = diskindex.nMoneySupply;
                 pindexNew->nFlags = diskindex.nFlags;
                 if (!Params().IsStakeModifierV2(pindexNew->nHeight)) {
-                    pindexNew->nStakeModifier = diskindex.nStakeModifier;
+                    //pindexNew->nStakeModifier = diskindex.nStakeModifier;
                 } else {
                     pindexNew->nStakeModifierV2 = diskindex.nStakeModifierV2;
                 }
