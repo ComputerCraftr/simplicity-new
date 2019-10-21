@@ -512,9 +512,9 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
         if (!masternodePayments.CanVote(winner.vinMasternode.prevout, winner.nBlockHeight, winner.payeeLevel)) {
             LogPrint("mnpayments", "%s - already voted\n", logString.c_str());
 
-            // Ban after 50 times
-            TRY_LOCK(cs_main, locked);
-            if (locked) Misbehaving(pfrom->GetId(), 2);
+            // Ban after 100 times
+            // TRY_LOCK(cs_main, locked);
+            // if (locked) Misbehaving(pfrom->GetId(), 1);
             return;
         }
 
@@ -660,8 +660,10 @@ bool CMasternodeBlockPayees::IsTransactionValid(const CTransaction& txNew, CAmou
     }
 
     // if we don't have at least 6 signatures on a payee, approve whichever is the longest chain
-    if (!max_signatures.size())
+    if (!max_signatures.size()) {
+        LogPrint("mnpayments","CMasternodePayments::IsTransactionValid - Not enough signatures, accepting\n");
         return true;
+    }
 
     std::string strPayeesPossible;
 
@@ -794,8 +796,8 @@ bool CMasternodePaymentWinner::IsValid(CNode* pnode, std::string& strError)
         mnodeman.AskForMN(pnode, vinMasternode);
 
         // Ban after 50 times
-        TRY_LOCK(cs_main, locked);
-        if (locked) Misbehaving(pnode->GetId(), 2);
+        // TRY_LOCK(cs_main, locked);
+        // if (locked) Misbehaving(pnode->GetId(), 2);
         return false;
     }
 
