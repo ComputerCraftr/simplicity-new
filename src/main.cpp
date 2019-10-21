@@ -4838,15 +4838,6 @@ bool ProcessNewBlock(CValidationState& state, CNode* pfrom, CBlock* pblock, bool
     // Preliminary checks
     int64_t nStartTime = GetTimeMillis();
 
-    if (pblock->GetHash() != Params().HashGenesisBlock() && pfrom != NULL && (pfrom->nVersion < SENDHEADERS_VERSION || !Params().HeadersFirstSyncingActive())) {
-        //if we get this far, check if the prev block is our prev block, if not then request sync and return false
-        BlockMap::iterator mi = mapBlockIndex.find(pblock->hashPrevBlock);
-        if (mi == mapBlockIndex.end()) {
-            pfrom->PushMessage("getblocks", chainActive.GetLocator(), uint256(0));
-            return false;
-        }
-    }
-
     if (pblock->nVersion < 8 && pblock->vtx.size() > 1 && pblock->vtx[1].IsCoinStake())
         pblock->fPreForkPoS = true;
 
@@ -6269,7 +6260,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
         // Send the rest of the chain
         if (pindex)
             pindex = chainActive.Next(pindex);
-        int nLimit = 500;
+        int nLimit = 5000;
         LogPrint("net", "getblocks %d to %s limit %d from peer=%d\n", (pindex ? pindex->nHeight : -1), hashStop.IsNull() ? "end" : hashStop.ToString(), nLimit, pfrom->id);
         for (; pindex; pindex = chainActive.Next(pindex))
         {
@@ -6698,23 +6689,28 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
         CInv inv(MSG_BLOCK, hashBlock);
         LogPrint("net", "received block %s peer=%d\n", inv.hash.ToString(), pfrom->id);
 
-        pfrom->AddInventoryKnown(inv);
+        //sometimes we will be sent their most recent block and its not the one we want, in that case tell where we are
+        if (!mapBlockIndex.count(block.hashPrevBlock)) {
+            //ask to sync to this block
+            pfrom->PushMessage((!Params().HeadersFirstSyncingActive() || pfrom->nVersion < SENDHEADERS_VERSION) ? "getblocks" : "getheaders", chainActive.GetLocator(), uint256());
+        } else {
+            pfrom->AddInventoryKnown(inv);
 
-        CValidationState state;
-        // Process all blocks from whitelisted peers, even if not requested,
-        // unless we're still syncing with the network.
-        // Such an unrequested block may still be processed, subject to the
-        // conditions in AcceptBlock().
-        bool forceProcessing = pfrom->fWhitelisted && !IsInitialBlockDownload();
-        if (forceProcessing || !mapBlockIndex.count(hashBlock) || !(mapBlockIndex.at(hashBlock)->nStatus & BLOCK_HAVE_DATA)) //temporarily cut down on spam
+            CValidationState state;
+            // Process all blocks from whitelisted peers, even if not requested,
+            // unless we're still syncing with the network.
+            // Such an unrequested block may still be processed, subject to the
+            // conditions in AcceptBlock().
+            bool forceProcessing = pfrom->fWhitelisted && !IsInitialBlockDownload();
             ProcessNewBlock(state, pfrom, &block, forceProcessing, NULL);
-        int nDoS;
-        if (state.IsInvalid(nDoS)) {
-            pfrom->PushMessage("reject", strCommand, (unsigned char)state.GetRejectCode(),
-                               state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.hash);
-            if (nDoS > 0) {
-                LOCK(cs_main);
-                Misbehaving(pfrom->GetId(), nDoS);
+            int nDoS;
+            if (state.IsInvalid(nDoS)) {
+                pfrom->PushMessage("reject", strCommand, (unsigned char)state.GetRejectCode(),
+                                   state.GetRejectReason().substr(0, MAX_REJECT_MESSAGE_LENGTH), inv.hash);
+                if (nDoS > 0) {
+                    LOCK(cs_main);
+                    Misbehaving(pfrom->GetId(), nDoS);
+                }
             }
         }
 
@@ -7256,7 +7252,7 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
                 nSyncStarted++;
                 if (!Params().HeadersFirstSyncingActive() || pto->nVersion < SENDHEADERS_VERSION) // old version does have getheaders
                 {
-                    pto->PushMessage("getblocks", chainActive.GetLocator(chainActive.Tip()), uint256(0));
+                    pto->PushMessage("getblocks", chainActive.GetLocator(chainActive.Tip()), uint256());
                 }
                 else
                 {
