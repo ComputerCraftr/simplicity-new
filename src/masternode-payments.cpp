@@ -575,25 +575,17 @@ bool CMasternodePayments::IsScheduled(CMasternode& mn, int nNotBlockHeight) cons
 {
     LOCK(cs_mapMasternodeBlocks);
 
-    int64_t nHeight;
+    int nHeight;
     {
         TRY_LOCK(cs_main, locked);
-
-        if (!locked)
-            return false;
-
-        auto chain_tip = chainActive.Tip();
-
-        if(!chain_tip)
-            return false;
-
-        nHeight = chain_tip->nHeight;
+        if (!locked || chainActive.Tip() == NULL) return false;
+        nHeight = chainActive.Tip()->nHeight;
     }
 
     CScript mnpayee = GetScriptForRawPubKey(mn.pubKeyCollateralAddress);
 
     CScript payee;
-    for (int64_t h = nHeight; h <= nHeight + 8; ++h) {
+    for (int64_t h = nHeight; h <= nHeight + 8; h++) {
         if (h == nNotBlockHeight) continue;
         if (mapMasternodeBlocks.count(h)) {
             if (mapMasternodeBlocks.at(h).GetPayee(mn.Level(), payee)) {
