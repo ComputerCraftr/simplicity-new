@@ -24,7 +24,7 @@ static const bool DEFAULT_SPLASHSCREEN = true;
 /* Transaction list -- unconfirmed transaction */ //fb861c
 #define COLOR_UNCONFIRMED QColor(201, 99, 3) //c96303
 /* Transaction list -- negative amount */
-#define COLOR_NEGATIVE QColor(206, 188, 0) //cebc00
+#define COLOR_NEGATIVE QColor(179, 164, 0) //b3a400
 /* Transaction list -- bare address (without label) */
 #define COLOR_BAREADDRESS QColor(140, 140, 140) //8c8c8c
 /* Transaction list -- TX status decoration - open until date */
@@ -37,8 +37,8 @@ static const bool DEFAULT_SPLASHSCREEN = true;
 #define COLOR_CONFLICTED QColor(255, 0, 0) //ff0000
 /* Transaction list -- TX status decoration - orphan (Light Gray #D3D3D3) */
 #define COLOR_ORPHAN QColor(211, 211, 211)
-/* Transaction list -- TX status decoration - stake (Lime #00FF00) */ //8aff2b
-#define COLOR_STAKE QColor(138,43,226)
+/* Transaction list -- TX status decoration - stake (Green #4f8f0a) */
+#define COLOR_STAKE QColor(79, 143, 10)
 /* Tooltips longer than this (in characters) are converted into rich text,
    so that they can be word-wrapped.
  */
