@@ -940,8 +940,8 @@ bool AppInit2()
     if (GetBoolArg("-tor", false))
         return InitError(_("Error: Unsupported argument -tor found, use -onion."));
     // Check level must be 4 for zerocoin checks
-    //if (mapArgs.count("-checklevel"))
-        //return InitError(_("Error: Unsupported argument -checklevel found. Checklevel must be level 4."));
+    if (mapArgs.count("-checklevel"))
+        return InitError(_("Error: Unsupported argument -checklevel found. Checklevel must be level 4."));
 
     if (GetBoolArg("-benchmark", false))
         InitWarning(_("Warning: Unsupported argument -benchmark ignored, use -debug=bench."));
