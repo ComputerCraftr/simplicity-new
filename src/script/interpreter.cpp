@@ -69,12 +69,12 @@ bool static IsCompressedOrUncompressedPubKey(const valtype &vchPubKey) {
         //  Non-canonical public key: too short
         return false;
     }
-    if (vchPubKey[0] == 0x04) {
+    /*if (vchPubKey[0] == 0x04) { // uncompressed keys are always invalid
         if (vchPubKey.size() != 65) {
             //  Non-canonical public key: invalid length for uncompressed key
             return false;
         }
-    } else if (vchPubKey[0] == 0x02 || vchPubKey[0] == 0x03) {
+    } else*/ if (vchPubKey[0] == 0x02 || vchPubKey[0] == 0x03) {
         if (vchPubKey.size() != 33) {
             //  Non-canonical public key: invalid length for compressed key
             return false;

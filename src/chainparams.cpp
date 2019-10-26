@@ -195,11 +195,13 @@ public:
         nStartTreasuryBlock = nMandatoryUpgradeBlock;
         nTreasuryBlockStep = 1 * 24 * 60 * 60 / nTargetSpacing; // Once per day
         nMasternodeTiersStartHeight = 2100000000;
-        vDevFundPubKey1=CPubKey(ParseHex("03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1"));
-        vDevFundPubKey2=CPubKey(ParseHex("03b9dc2f0d817abf63e488b6b1780de1f6226280fc9961e2ab4c3b1e943377ad00"));
-        vCommunityFundWallet="R4VpCXiZJHFRgviU7qs6VFiQBpqg8dqmSs";
+        vDevFundPubKey1 = CPubKey(ParseHex("03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1"));
+        vDevFundPubKey2 = CPubKey(ParseHex("03b9dc2f0d817abf63e488b6b1780de1f6226280fc9961e2ab4c3b1e943377ad00"));
+        vCommunityFundWallet = "R4VpCXiZJHFRgviU7qs6VFiQBpqg8dqmSs";
         assert(vDevFundPubKey1.IsFullyValid());
         assert(vDevFundPubKey2.IsFullyValid());
+        vBurnAddresses.emplace_back("8WYZa29o2Kps14H9jSrr92pqHaPVFubbMY");
+        vBurnAddresses.emplace_back("8TyoJ6DCdbT3TYhS38XehGCtGXpmmZ2H5j");
 
         /**
          * Build the genesis block. Note that the output of the genesis coinbase cannot
@@ -337,11 +339,14 @@ public:
         nStartTreasuryBlock = 10;
         nTreasuryBlockStep = 20; //24 * 6 * 60 / nTargetSpacing; // Ten times per day
         nMasternodeTiersStartHeight = 0;
-        vDevFundPubKey1=CPubKey(ParseHex("03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134"));
-        vDevFundPubKey2=CPubKey(ParseHex("0242044552e508e9379b2fa8a9011aa017ddcc5b54b975100f5f43ebd53de3d194"));
-        vCommunityFundWallet="8r9dZJmXFidaZyXijEtD7LuDB3wThJKiut";
+        vDevFundPubKey1 = CPubKey(ParseHex("03b95000b2b06e391c058ea14d47ac3c525753c68460864f254ada5a63e27a8134"));
+        vDevFundPubKey2 = CPubKey(ParseHex("0242044552e508e9379b2fa8a9011aa017ddcc5b54b975100f5f43ebd53de3d194"));
+        vCommunityFundWallet = "8r9dZJmXFidaZyXijEtD7LuDB3wThJKiut";
         assert(vDevFundPubKey1.IsFullyValid());
         assert(vDevFundPubKey2.IsFullyValid());
+        vBurnAddresses.clear();
+        vBurnAddresses.emplace_back("yJbqydKwNnV5zisR7kRWDrQQeG9mBAzqM5");
+        //vBurnAddresses.emplace_back("xzd3LKsihYn1CKBESTQP7EresFECXEMivk");
 
         //! Modify the testnet genesis block so the timestamp is valid for a later start.
         //genesis.nTime = 1454124731;

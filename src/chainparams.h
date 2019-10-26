@@ -120,6 +120,7 @@ public:
     CPubKey vDevFundPubKey2;
     std::string vCommunityFundWallet;
     std::map<CScript, int> GetTreasuryRewardScriptAtHeight(int height) const;
+    std::vector<std::string> vBurnAddresses;
 
     /** Zerocoin **/
     std::string Zerocoin_Modulus() const { return zerocoinModulus; }

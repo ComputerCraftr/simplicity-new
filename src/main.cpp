@@ -1345,6 +1345,23 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fReject
     std::set<CBigNum> vZerocoinSpendSerials;
     int nZCSpendCount = 0;
     for (const CTxIn& txin : tx.vin) {
+        //burn addresses cannot spend
+        if (txin.prevout.hash != 0) {
+            CTransaction txPrev;
+            uint256 hashBlock;
+            CTxDestination dest;
+            if (GetTransaction(txin.prevout.hash, txPrev, hashBlock, true) && ExtractDestination(txPrev.vout[txin.prevout.n].scriptPubKey, dest)) {
+                std::string address = CBitcoinAddress(dest).ToString(); //could also compare prevout scriptpubkey directly against burnscripts
+                for (const std::string& burnAddress : Params().vBurnAddresses) {
+                    if (address == burnAddress)
+                        return state.DoS(100, error("%s : Burn address attempted to spend in %s", __func__, tx.GetHash().GetHex()),
+                                         REJECT_INVALID, "bad-txns-spending-burned-coins");
+                }
+            } else
+                return state.DoS(100, error("%s : Output %s not found", __func__, txin.prevout.hash.GetHex()),
+                                 REJECT_INVALID, "bad-txns-missing-prevout");
+        }
+
         // Check for duplicate inputs
         if (vInOutPoints.count(txin.prevout))
             return state.DoS(100, error("CheckTransaction() : duplicate inputs"),
@@ -3291,7 +3308,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
         nValueOut += tx.GetValueOut();
         for (const CTxOut& out : tx.vout) {
-            if (out.scriptPubKey.IsUnspendable())
+            if (out.scriptPubKey.IsUnspendable(pindex->nHeight >= Params().WALLET_UPGRADE_BLOCK()))
                 nAmountBurned += out.nValue;
         }
 
