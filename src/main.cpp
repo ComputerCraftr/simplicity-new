@@ -1346,11 +1346,21 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fReject
     int nZCSpendCount = 0;
     for (const CTxIn& txin : tx.vin) {
         //burn addresses cannot spend
-        if (txin.prevout.hash != 0) {
+        if (tx.nVersion > 1 && txin.prevout.hash != 0) {
             CTransaction txPrev;
             uint256 hashBlock;
             CTxDestination dest;
-            if (GetTransaction(txin.prevout.hash, txPrev, hashBlock, true) && ExtractDestination(txPrev.vout[txin.prevout.n].scriptPubKey, dest)) {
+            if (GetTransaction(txin.prevout.hash, txPrev, hashBlock, true)) {
+                for (const std::vector<unsigned char>& burnScript : burnScripts) {
+                    if (txPrev.vout[txin.prevout.n].scriptPubKey == burnScript)
+                        return state.DoS(100, error("%s : Burn address attempted to spend in %s", __func__, tx.GetHash().GetHex()),
+                                         REJECT_INVALID, "bad-txns-spending-burned-coins");
+                }
+            } else
+                return state.DoS(100, error("%s : Output %s not found", __func__, txin.prevout.hash.GetHex()),
+                                 REJECT_INVALID, "bad-txns-missing-prevout");
+
+            /*if (GetTransaction(txin.prevout.hash, txPrev, hashBlock, true) && ExtractDestination(txPrev.vout[txin.prevout.n].scriptPubKey, dest)) {
                 std::string address = CBitcoinAddress(dest).ToString(); //could also compare prevout scriptpubkey directly against burnscripts
                 for (const std::string& burnAddress : Params().vBurnAddresses) {
                     if (address == burnAddress)
@@ -1359,7 +1369,7 @@ bool CheckTransaction(const CTransaction& tx, bool fZerocoinActive, bool fReject
                 }
             } else
                 return state.DoS(100, error("%s : Output %s not found", __func__, txin.prevout.hash.GetHex()),
-                                 REJECT_INVALID, "bad-txns-missing-prevout");
+                                 REJECT_INVALID, "bad-txns-missing-prevout");*/
         }
 
         // Check for duplicate inputs
@@ -3103,10 +3113,15 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             else
                 break;
         }
-        int highestCount = *std::max_element(typeCount, typeCount + ALGO_COUNT);
-        if ((end == 10 && typeCount[POS] == 0) || /*(pindex->pprev && CBlockHeader::GetAlgo(pindex->nVersion) == CBlockHeader::GetAlgo(pindex->pprev->nVersion)) ||*/ (highestCount > 4 && highestCount != typeCount[POS]))
-            return state.DoS(100, error("%s : too many blocks of the same type in a row, %d", __func__, highestCount),
+        
+        if ((end == 10 && typeCount[POS] == 0) /*|| (pindex->pprev && CBlockHeader::GetAlgo(pindex->nVersion) == CBlockHeader::GetAlgo(pindex->pprev->nVersion))*/)
+            return state.DoS(100, error("%s : too many blocks of the same type in a row", __func__),
                 REJECT_INVALID, "same-type");
+        for (int i = POW_QUARK; i < ALGO_COUNT; i++) {
+            if (typeCount[i] > 4)
+                return state.DoS(100, error("%s : too many blocks of the same type in a row", __func__),
+                    REJECT_INVALID, "same-type");
+        }
     }
 
     if (block.IsProofOfStake()) {

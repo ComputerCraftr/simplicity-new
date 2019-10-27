@@ -78,7 +78,7 @@ unsigned int GetLegacyNextWorkRequired(const CBlockIndex* pindexLast, const CBlo
     int64_t nTargetSpacing = 80;
     int64_t nTargetTimespan = 20 * 60;
 
-    uint256 bnTargetLimit = fProofOfStake ? ~uint256(0) >> 20 : Params().ProofOfWorkLimit(POW_QUARK);
+    uint256 bnTargetLimit = fProofOfStake ? Params().ProofOfStakeLimit() : Params().ProofOfWorkLimit(POW_QUARK);
 
     if (pindexLast == NULL)
         return bnTargetLimit.GetCompact(); // genesis block

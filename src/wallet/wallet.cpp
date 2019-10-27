@@ -1180,7 +1180,7 @@ void CWalletTx::GetAmounts(std::list<COutputEntry>& listReceived,
 
         // In either case, we need to get the destination address
         CTxDestination address;
-        if (txout.IsZerocoinMint() || txout.scriptPubKey.IsUnspendable()) {
+        if (txout.IsZerocoinMint() || txout.scriptPubKey.IsUnspendable(false)) {
             address = CNoDestination();
         } else if (!ExtractDestination(txout.scriptPubKey, address)) {
             if (!IsCoinStake() && !IsCoinBase()) {
