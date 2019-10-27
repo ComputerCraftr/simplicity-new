@@ -3113,7 +3113,7 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
             else
                 break;
         }
-        
+
         if ((end == 10 && typeCount[POS] == 0) /*|| (pindex->pprev && CBlockHeader::GetAlgo(pindex->nVersion) == CBlockHeader::GetAlgo(pindex->pprev->nVersion))*/)
             return state.DoS(100, error("%s : too many blocks of the same type in a row", __func__),
                 REJECT_INVALID, "same-type");

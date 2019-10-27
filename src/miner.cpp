@@ -468,7 +468,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn, CWallet* pwallet, 
             if (txNew.vout.size() > 1) {
                 pblock->payee = txNew.vout[1].scriptPubKey;
             } else {
-                //CAmount blockValue = nFees + GetBlockValue(pindexPrev->nHeight);
+                //CAmount blockValue = nFees + GetBlockValue(pindexPrev->nHeight + 1);
                 txNew.vout[0].nValue = nBlockValue;
             }
         }
