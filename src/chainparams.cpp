@@ -174,7 +174,7 @@ public:
         nMaxMoneyOut = 7000000000 * COIN; // 7 billion
 
         /** Height or Time Based Activations **/
-        nMandatoryUpgradeBlock = 1100000;
+        nMandatoryUpgradeBlock = 1000000;
         nUpgradeBlockVersion = 8; //Block headers must be this version after upgrade block
         nModifierUpdateBlock = 0;
         nZerocoinStartHeight = 2100000000;
@@ -200,8 +200,7 @@ public:
         vCommunityFundWallet = "R4VpCXiZJHFRgviU7qs6VFiQBpqg8dqmSs";
         assert(vDevFundPubKey1.IsFullyValid());
         assert(vDevFundPubKey2.IsFullyValid());
-        vBurnAddresses.emplace_back("8WYZa29o2Kps14H9jSrr92pqHaPVFubbMY");
-        vBurnAddresses.emplace_back("8TyoJ6DCdbT3TYhS38XehGCtGXpmmZ2H5j");
+        //vBurnAddresses.emplace_back("");
 
         /**
          * Build the genesis block. Note that the output of the genesis coinbase cannot
@@ -344,8 +343,8 @@ public:
         vCommunityFundWallet = "8r9dZJmXFidaZyXijEtD7LuDB3wThJKiut";
         assert(vDevFundPubKey1.IsFullyValid());
         assert(vDevFundPubKey2.IsFullyValid());
-        vBurnAddresses.clear();
-        vBurnAddresses.emplace_back("yJbqydKwNnV5zisR7kRWDrQQeG9mBAzqM5");
+        //vBurnAddresses.clear();
+        //vBurnAddresses.emplace_back("yJbqydKwNnV5zisR7kRWDrQQeG9mBAzqM5");
         //vBurnAddresses.emplace_back("xzd3LKsihYn1CKBESTQP7EresFECXEMivk");
 
         //! Modify the testnet genesis block so the timestamp is valid for a later start.

@@ -7,6 +7,7 @@
 #ifndef BITCOIN_COINS_H
 #define BITCOIN_COINS_H
 
+//#include "chainparams.h"
 #include "compressor.h"
 #include "script/standard.h"
 #include "serialize.h"
@@ -128,7 +129,7 @@ public:
     void ClearUnspendable()
     {
         for (CTxOut& txout : vout) {
-            if (txout.scriptPubKey.IsUnspendable())
+            if (txout.scriptPubKey.IsUnspendable(/*nHeight >= Params().WALLET_UPGRADE_BLOCK()*/))
                 txout.SetNull();
         }
         Cleanup();

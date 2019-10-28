@@ -381,14 +381,14 @@ private:
     int64_t m_value;
 };
 
-static const std::vector<unsigned char> burnScripts[] = {
+/*static const std::vector<unsigned char> burnScripts[] = {
     ParseHex("76a914a996cc59f751964a8f4c60b0caca57724ad5e4c988ac"), //p2pkh 8WYZa29o2Kps14H9jSrr92pqHaPVFubbMY
     ParseHex("76a9148d7446fbef8e5bc8df71b7c8aa283c6252ce38c288ac"), //p2pkh 8TyoJ6DCdbT3TYhS38XehGCtGXpmmZ2H5j
     ParseHex("76a914ed29b5c96631e0de1052a472aafe07c03f3c377588ac"), //p2pkh yJbqydKwNnV5zisR7kRWDrQQeG9mBAzqM5
     ParseHex("210216bed2efae032e597e123c73351cb75c0f3b95ccb2b8b8519e1812edf4237ea9ac"), //p2pk 0216bed2efae032e597e123c73351cb75c0f3b95ccb2b8b8519e1812edf4237ea9
     ParseHex("2103599a7887343bcff97fa9d4236dabcdb02df80fa58fa19259e71b5db76fb53f6eac"), //p2pk 03599a7887343bcff97fa9d4236dabcdb02df80fa58fa19259e71b5db76fb53f6e
     ParseHex("21031b2159dd67754730467761e11d7a2157baf88a82203d2da793c7fc1d60a4508fac"), //p2pk 031b2159dd67754730467761e11d7a2157baf88a82203d2da793c7fc1d60a4508f
-};
+};*/
 
 /** Serialized script, used inside transaction inputs and outputs */
 class CScript : public std::vector<unsigned char>
@@ -649,9 +649,9 @@ public:
      * regardless of the initial stack. This allows outputs to be pruned
      * instantly when entering the UTXO set.
      */
-    bool IsUnspendable(bool includeBurnAddresses=true) const
+    bool IsUnspendable(/*bool includeBurnAddresses=true*/) const
     {
-        if ((size() > 0 && *begin() == OP_RETURN) || size() > MAX_SCRIPT_SIZE)
+        /*if ((size() > 0 && *begin() == OP_RETURN) || size() > MAX_SCRIPT_SIZE)
             return true;
         else if (!includeBurnAddresses)
             return false;
@@ -660,7 +660,8 @@ public:
                 if (*this == burnScript)
                     return true;
             return false;
-        }
+        }*/
+        return (size() > 0 && *begin() == OP_RETURN) || (size() > MAX_SCRIPT_SIZE);
     }
 
     std::string ToString() const;

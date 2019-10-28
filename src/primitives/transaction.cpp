@@ -99,8 +99,10 @@ bool COutPoint::IsMasternodeReward(const CTransaction* tx) const
 {
     if (tx->IsCoinStake())
         return (n > 1) && (tx->vout[1].scriptPubKey != tx->vout[n].scriptPubKey);
-    else
+    else if (tx->IsCoinBase())
         return (n != 0) && (tx->vout[0].scriptPubKey != tx->vout[n].scriptPubKey);
+    else
+        return false;
 }
 
 uint256 CTxOut::GetHash() const
