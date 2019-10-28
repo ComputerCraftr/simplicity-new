@@ -290,7 +290,7 @@ void MultisigDialog::on_createButton_clicked()
             CoinControlDialog::coinControl->ListSelected(vSelected);
             for (auto outpoint : vSelected)
                 vUserIn.emplace_back(CTxIn(outpoint));
-        }else{//check for raw inputs
+        } else { //check for raw inputs
             for(int i = 0; i < ui->inputsList->count(); i++){
                 QWidget* input = qobject_cast<QWidget*>(ui->inputsList->itemAt(i)->widget());
                 QLineEdit* txIdLine = input->findChild<QLineEdit*>("txInputId");
@@ -320,35 +320,39 @@ void MultisigDialog::on_createButton_clicked()
             QWidget* dest = qobject_cast<QWidget*>(ui->destinationsList->itemAt(i)->widget());
             QValidatedLineEdit* addr = dest->findChild<QValidatedLineEdit*>("destinationAddress");
             BitcoinAmountField* amt = dest->findChild<BitcoinAmountField*>("destinationAmount");
-            CBitcoinAddress address;
+            CScript scriptPubKey;
 
+            std::string destString = addr->text().toStdString();
             bool validDest = true;
 
-            if(!model->validateAddress(addr->text())){
+            if (model->validateAddress(addr->text())) {
+                scriptPubKey = GetScriptForDestination(CBitcoinAddress(destString).Get());
+            } else if (IsHex(destString) && CPubKey(ParseHex(destString)).IsFullyValid()) {
+                scriptPubKey = GetScriptForRawPubKey(CPubKey(ParseHex(destString)));
+            } else if (destString == "burn" || destString == "BURN") {
+                scriptPubKey = CScript() << OP_RETURN;
+            } else {
                 addr->setValid(false);
                 validDest = false;
-            }else{
-                address = CBitcoinAddress(addr->text().toStdString());
             }
 
-            if(!amt->validate()){
+            if (!amt->validate()) {
                 amt->setValid(false);
                 validDest = false;
             }
 
-            if(!validDest){
+            if (!validDest) {
                 validInput = false;
                 continue;
             }
 
-            CScript scriptPubKey = GetScriptForDestination(address.Get());
             CTxOut out(amt->value(), scriptPubKey);
             vUserOut.push_back(out);
         }
 
 
         //if all user data valid create a multisig tx
-        if(validInput){
+        if (validInput) {
             //clear member variable
             multisigTx = CMutableTransaction();
 
@@ -792,8 +796,8 @@ bool MultisigDialog::createRedeemScript(int m, std::vector<std::string> vKeys, C
                 if (!pwalletMain->GetPubKey(keyID, vchPubKey))
                     throw std::runtime_error(
                         strprintf("no full public key for address %s", keyString));
-                if (!vchPubKey.IsFullyValid()){
-                    std::string sKey = keyString.empty()?"(empty)":keyString;
+                if (!vchPubKey.IsFullyValid()) {
+                    std::string sKey = keyString.empty() ? "(empty)" : keyString;
                     throw std::runtime_error(" Invalid public key: " + sKey );
                 }
                 pubkeys[i++] = vchPubKey;
@@ -804,7 +808,7 @@ bool MultisigDialog::createRedeemScript(int m, std::vector<std::string> vKeys, C
 #endif
             if (IsHex(keyString)) {
                 CPubKey vchPubKey(ParseHex(keyString));
-                if (!vchPubKey.IsFullyValid()){
+                if (!vchPubKey.IsFullyValid()) {
                     throw std::runtime_error(" Invalid public key: " + keyString);
                 }
                 pubkeys[i++] = vchPubKey;
