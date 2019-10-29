@@ -329,7 +329,7 @@ void MultisigDialog::on_createButton_clicked()
                 scriptPubKey = GetScriptForDestination(CBitcoinAddress(destString).Get());
             } else if (IsHex(destString) && CPubKey(ParseHex(destString)).IsFullyValid()) {
                 scriptPubKey = GetScriptForRawPubKey(CPubKey(ParseHex(destString)));
-            } else if (destString == "burn" || destString == "BURN") {
+            } else if (destString == "burn" || destString == "Burn" || destString == "BURN") {
                 scriptPubKey = CScript() << OP_RETURN;
             } else {
                 addr->setValid(false);
