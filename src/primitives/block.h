@@ -112,11 +112,12 @@ public:
         switch (version & ALGO_VERSION) {
             case ALGO_POS:
                 return POS;
-            default:
             case ALGO_POW_QUARK:
                 return POW_QUARK;
             case ALGO_POW_SCRYPT_SQUARED:
                 return POW_SCRYPT_SQUARED;
+            default:
+                return -1;
         }
     }
 
@@ -125,11 +126,12 @@ public:
         switch (algo) {
             case POS:
                 return ALGO_POS;
-            default:
             case POW_QUARK:
                 return ALGO_POW_QUARK;
             case POW_SCRYPT_SQUARED:
                 return ALGO_POW_SCRYPT_SQUARED;
+            default:
+                return CBlockHeader::CURRENT_VERSION;
         }
     }
 

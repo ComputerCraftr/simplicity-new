@@ -203,8 +203,8 @@ bool IsBlockValueValid(const CBlock& block, CAmount nExpectedValue, CAmount nMin
 
         int found = 0;
 
-        for (std::pair<CScript, int> payee : treasuryPayees) {
-            for (CTxOut out : txNew.vout) {
+        for (const std::pair<CScript, int>& payee : treasuryPayees) {
+            for (const CTxOut& out : txNew.vout) {
                 if (out.scriptPubKey == payee.first && out.nValue == treasuryPayment * payee.second / 100) {
                     found++; //We found our treasury payment, let's end it here.
                     break;

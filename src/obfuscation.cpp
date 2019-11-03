@@ -97,7 +97,7 @@ void CObfuscationPool::UnlockCoins()
             MilliSleep(50);
             continue;
         }
-        for (CTxIn v : lockedCoins)
+        for (CTxIn& v : lockedCoins)
             pwalletMain->UnlockCoin(v.prevout);
         break;
     }
@@ -531,12 +531,15 @@ bool CObfuScationSigner::IsVinAssociatedWithPubkey(CTxIn& vin, CPubKey& pubkey)
 
     CTransaction txVin;
     uint256 hash;
-    if (GetTransaction(vin.prevout.hash, txVin, hash, true)) {
-        for (CTxOut out : txVin.vout) {
-            if (out.nValue == 10000 * COIN) {
-                if (out.scriptPubKey == payee2) return true;
-            }
-        }
+    if (!GetTransaction(vin.prevout.hash, txVin, hash, true))
+        return false;
+
+    for (const CTxOut& out : txVin.vout) {
+        if (!CMasternode::IsDepositCoins(out.nValue))
+            continue;
+
+        if (out.scriptPubKey == payee2)
+            return true;
     }
 
     return false;

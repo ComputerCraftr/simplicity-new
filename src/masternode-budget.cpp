@@ -600,7 +600,7 @@ void CBudgetManager::FillTreasuryBlockPayee(CMutableTransaction& txNew, CAmount 
     CAmount treasuryPayment = GetTreasuryAward(height);
     std::string strPayees;
 
-    for (std::pair<CScript, int> payee : treasuryPayees) {
+    for (const std::pair<CScript, int>& payee : treasuryPayees) {
         unsigned int i = txNew.vout.size();
         txNew.vout.resize(i + 1);
         txNew.vout[i].scriptPubKey = payee.first;
@@ -2141,7 +2141,7 @@ bool CFinalizedBudget::IsPaidAlready(uint256 nProposalHash, int nBlockHeight)
     int nPaidBlockHeight = 0;
     uint256 nOldProposalHash;
 
-    for(it = mapPayment_History.begin(); it != mapPayment_History.end(); /* No incrementation needed */ ) {
+    for (it = mapPayment_History.begin(); it != mapPayment_History.end(); /* No incrementation needed */ ) {
         nPaidBlockHeight = (*it).second;
         if((nPaidBlockHeight < GetBlockStart()) || (nPaidBlockHeight > GetBlockEnd())) {
             nOldProposalHash = (*it).first;
@@ -2182,7 +2182,7 @@ TrxValidationStatus CFinalizedBudget::IsTransactionValid(const CTransaction& txN
 
     bool paid = false;
 
-    for (CTxOut out : txNew.vout) {
+    for (const CTxOut& out : txNew.vout) {
         LogPrint("mnbudget","CFinalizedBudget::IsTransactionValid - nCurrentBudgetPayment=%d, payee=%s == out.scriptPubKey=%s, amount=%ld == out.nValue=%ld\n",
                  nCurrentBudgetPayment, vecBudgetPayments[nCurrentBudgetPayment].payee.ToString().c_str(), out.scriptPubKey.ToString().c_str(),
                  vecBudgetPayments[nCurrentBudgetPayment].nAmount, out.nValue);
@@ -2260,7 +2260,7 @@ CFinalizedBudgetBroadcast::CFinalizedBudgetBroadcast(const CFinalizedBudget& oth
 {
     strBudgetName = other.strBudgetName;
     nBlockStart = other.nBlockStart;
-    for (CTxBudgetPayment out : other.vecBudgetPayments)
+    for (const CTxBudgetPayment& out : other.vecBudgetPayments)
         vecBudgetPayments.push_back(out);
     mapVotes = other.mapVotes;
     nFeeTXHash = other.nFeeTXHash;
@@ -2270,7 +2270,7 @@ CFinalizedBudgetBroadcast::CFinalizedBudgetBroadcast(std::string strBudgetNameIn
 {
     strBudgetName = strBudgetNameIn;
     nBlockStart = nBlockStartIn;
-    for (CTxBudgetPayment out : vecBudgetPaymentsIn)
+    for (CTxBudgetPayment& out : vecBudgetPaymentsIn)
         vecBudgetPayments.push_back(out);
     mapVotes.clear();
     nFeeTXHash = nFeeTXHashIn;
