@@ -1,5 +1,5 @@
 ---
-name: "simplicity-win-3.4"
+name: "simplicity-win-2.0"
 enable_cache: true
 distro: "ubuntu"
 suites:
@@ -24,7 +24,7 @@ packages:
 - "python3"
 - "rename"
 remotes:
-- "url": "https://github.com/simplicity-project/simplicity.git"
+- "url": "https://github.com/simplicity-coin/simplicity.git"
   "dir": "simplicity"
 files: []
 script: |

@@ -1,5 +1,5 @@
 ---
-name: "simplicity-linux-3.4"
+name: "simplicity-linux-2.0"
 enable_cache: true
 distro: "ubuntu"
 suites:
@@ -33,7 +33,7 @@ packages:
 - "ca-certificates"
 - "python3"
 remotes:
-- "url": "https://github.com/simplicity-project/simplicity.git"
+- "url": "https://github.com/simplicity-coin/simplicity.git"
   "dir": "simplicity"
 files: []
 script: |
