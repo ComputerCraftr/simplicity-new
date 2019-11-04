@@ -4485,6 +4485,9 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
     // TODO: Check if this is ok... blockHeight is always the tip or should we look for the prevHash and get the height?
     // int blockHeight = chainActive.Height() + 1;
     for (const CTransaction& tx : block.vtx) {
+        if (tx.nVersion < 3 && block.nVersion > 7)
+            return state.DoS(100, error("%s : Transaction %s has invalid version %d", __func__, tx.GetHash().ToString(), tx.nVersion),
+                REJECT_INVALID, "bad-txns-version");
         if (!CheckTransaction(tx, fZerocoinActive, nHeight >= Params().Zerocoin_Block_EnforceSerialRange(), state))
             return error("%s : CheckTransaction of %s failed with %s", __func__, tx.GetHash().ToString(), FormatStateMessage(state));
 
@@ -4673,7 +4676,7 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
     // Check for duplicate
     uint256 hash = block.GetHash();
     BlockMap::iterator miSelf = mapBlockIndex.find(hash);
-    CBlockIndex *pindex = NULL;
+    CBlockIndex *pindex = nullptr;
     if (hash != Params().HashGenesisBlock()) {
         if (miSelf != mapBlockIndex.end()) {
             // Block header is already known.
@@ -4713,7 +4716,7 @@ static bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state
             return false;
     }
 
-    if (pindex == NULL)
+    if (pindex == nullptr)
         pindex = AddToBlockIndex(block);
 
     if (ppindex)
@@ -6527,6 +6530,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
             return error("headers message size = %u", nCount);
         }
         headers.resize(nCount);
+
         for (unsigned int n = 0; n < nCount; n++) {
             vRecv >> headers[n];
             //ReadCompactSize(vRecv); // ignore tx count; assume it is 0.
@@ -6541,6 +6545,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
         }
 
         CNodeState *nodestate = State(pfrom->GetId());
+
         // If this looks like it could be a block announcement (nCount <
         // MAX_BLOCKS_TO_ANNOUNCE), use special logic for handling headers that
         // don't connect:
@@ -6551,7 +6556,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
         //   nUnconnectingHeaders gets reset back to 0.
         if (mapBlockIndex.find(headers[0].hashPrevBlock) == mapBlockIndex.end() && nCount < MAX_BLOCKS_TO_ANNOUNCE) {
             nodestate->nUnconnectingHeaders++;
-            pfrom->PushMessage("getheaders", chainActive.GetLocator(pindexBestHeader), uint256(0));
+            pfrom->PushMessage("getheaders", chainActive.GetLocator(pindexBestHeader), uint256());
             LogPrint("net", "received header %s: missing prev block %s, sending getheaders (%d) to end (peer=%d, nUnconnectingHeaders=%d)\n",
                     headers[0].GetHash().ToString(),
                     headers[0].hashPrevBlock.ToString(),
@@ -6565,6 +6570,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
             if (nodestate->nUnconnectingHeaders % MAX_UNCONNECTING_HEADERS == 0) {
                 Misbehaving(pfrom->GetId(), 20);
             }
+
             return true;
         }
 
@@ -6575,16 +6581,17 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
         int nFirst = 0;
         int nLast = 0;
 
-        CBlockIndex *pindexLast = NULL;
+        CBlockIndex *pindexLast = nullptr;
+
         for (const CBlock& header : headers) {
             CValidationState state;
-            if (pindexLast != NULL && header.hashPrevBlock != pindexLast->GetBlockHash()) {
+            if (pindexLast != nullptr && header.hashPrevBlock != pindexLast->GetBlockHash()) {
                 Misbehaving(pfrom->GetId(), 20);
                 ret = false;
                 strError = "non-continuous headers sequence";
                 break;
             }
-            if (!AcceptBlockHeader(header, state, &pindexLast, NULL, false)) {
+            if (!AcceptBlockHeader(header, state, &pindexLast, nullptr, false)) {
                 int nDoS;
                 if (state.IsInvalid(nDoS)) {
                     if (nDoS > 0)
@@ -6603,8 +6610,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
             }
         }
 
-        if(GetBoolArg("-headerspamfilter", DEFAULT_HEADER_SPAM_FILTER) && !IsInitialBlockDownload())
-        {
+        if (GetBoolArg("-headerspamfilter", DEFAULT_HEADER_SPAM_FILTER) && !IsInitialBlockDownload()) {
             LOCK(cs_main);
             CValidationState state;
             CNodeState *nodestate = State(pfrom->GetId());
@@ -6666,7 +6672,7 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
             } else {
                 std::vector<CInv> vGetData;
                 // Download as much as possible, from earliest to latest.
-                BOOST_REVERSE_FOREACH(CBlockIndex *pindex, vToFetch) {
+                BOOST_REVERSE_FOREACH (CBlockIndex *pindex, vToFetch) {
                     if (nodestate->nBlocksInFlight >= MAX_BLOCKS_IN_TRANSIT_PER_PEER) {
                         // Can't download any more from this peer
                         break;
