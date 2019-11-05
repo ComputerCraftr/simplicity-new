@@ -222,7 +222,7 @@ bool CMasternodeMan::Add(const CMasternode& mn)
 {
     LOCK(cs);
 
-    if (!mn.IsEnabled())
+    if (!mn.IsEnabled(true))
         return false;
 
     CMasternode* pmn = Find(mn.vin);
@@ -426,7 +426,7 @@ int CMasternodeMan::stable_size(unsigned mnlevel)
             }
         }
         mn.Check();
-        if (!mn.IsEnabled())
+        if (!mn.IsEnabled(false))
             continue; // Skip not-enabled masternodes
 
         nStable_size++;
@@ -449,7 +449,7 @@ unsigned CMasternodeMan::CountEnabled(unsigned mnlevel, int protocolVersion)
         if (check_level && mnlevel != mn.Level())
             return false;
 
-        return mn.protocolVersion >= protocolVersion && mn.IsEnabled();
+        return mn.protocolVersion >= protocolVersion && mn.IsEnabled(false);
     });
 }
 
@@ -467,7 +467,7 @@ std::map<unsigned, int> CMasternodeMan::CountEnabledByLevels(int protocolVersion
     {
         mn.Check();
 
-        bool enabled = mn.protocolVersion >= protocolVersion && mn.IsEnabled();
+        bool enabled = mn.protocolVersion >= protocolVersion && mn.IsEnabled(false);
 
         if(!enabled)
             continue;
@@ -542,7 +542,7 @@ bool CMasternodeMan::WinnersUpdate(CNode* node)
         }
     }
 
-    node->PushMessage("mnget", mnodeman.CountEnabled());
+    node->PushMessage("mnget", CountEnabled());
     int64_t askAgain = GetTime() + MASTERNODES_DSEG_SECONDS;
     mWeAskedForWinnerMasternodeList[node->addr] = askAgain;
 
@@ -615,7 +615,7 @@ CMasternode* CMasternodeMan::GetNextMasternodeInQueueForPayment(int nBlockHeight
 
     for (CMasternode& mn : vMasternodes) {
         mn.Check();
-        if (!mn.IsEnabled()) continue;
+        if (!mn.IsEnabled(false)) continue;
 
         if (mn.Level() != mnlevel) continue;
 
@@ -679,11 +679,10 @@ CMasternode* CMasternodeMan::FindRandomNotInVec(unsigned mnlevel, std::vector<CT
     bool found;
 
     for (CMasternode& mn : vMasternodes) {
-
         if (mnlevel != CMasternode::LevelValue::UNSPECIFIED && mn.Level() != mnlevel)
             continue;
 
-        if (mn.protocolVersion < protocolVersion || !mn.IsEnabled()) continue;
+        if (mn.protocolVersion < protocolVersion || !mn.IsEnabled(false)) continue;
         found = false;
         for (CTxIn& usedVin : vecToExclude) {
             if (mn.vin.prevout == usedVin.prevout) {
@@ -714,7 +713,7 @@ CMasternode* CMasternodeMan::GetCurrentMasterNode(unsigned mnlevel, int mod, int
         if (check_mnlevel && mn.Level() != mnlevel)
             continue;
 
-        if (mn.protocolVersion < minProtocol || !mn.IsEnabled()) continue;
+        if (mn.protocolVersion < minProtocol || !mn.IsEnabled(false)) continue;
 
         // calculate the score for each Masternode
         uint256 n = mn.CalculateScore(mod, nBlockHeight);
@@ -756,7 +755,7 @@ int CMasternodeMan::GetMasternodeRank(const CTxIn& vin, int64_t nBlockHeight, in
         }
         if (fOnlyActive) {
             mn.Check();
-            if (!mn.IsEnabled()) continue;
+            if (!mn.IsEnabled(false)) continue;
         }
         uint256 n = mn.CalculateScore(1, nBlockHeight);
         int64_t n2 = n.GetCompact(false);
@@ -792,7 +791,7 @@ std::vector<std::pair<int, CMasternode> > CMasternodeMan::GetMasternodeRanks(int
 
         if (mn.protocolVersion < minProtocol) continue;
 
-        if (!mn.IsEnabled()) {
+        if (!mn.IsEnabled(false)) {
             vecMasternodeScores.push_back(std::make_pair(9999, mn));
             continue;
         }
@@ -823,7 +822,7 @@ CMasternode* CMasternodeMan::GetMasternodeByRank(int nRank, int64_t nBlockHeight
         if (mn.protocolVersion < minProtocol) continue;
         if (fOnlyActive) {
             mn.Check();
-            if (!mn.IsEnabled()) continue;
+            if (!mn.IsEnabled(false)) continue;
         }
 
         uint256 n = mn.CalculateScore(1, nBlockHeight);
@@ -872,13 +871,12 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         CMasternodeBroadcast mnb;
         vRecv >> mnb;
 
-        auto pmn = mnodeman.Find(mnb.addr);
+        auto pmn = Find(mnb.addr);
 
         if (pmn && pmn->vin != mnb.vin) {
             pmn->Check(true);
 
-            if (pmn->IsEnabled())
-            {
+            if (pmn->IsEnabled(true)) {
                 LogPrint("masternode","mnb - More than one vin used for single IP address, new mnb.addr=%s, existing pmn->addr=%s\n", mnb.addr.ToString(), pmn->addr.ToString());
                 Misbehaving(pfrom->GetId(), 100);
                 return;
@@ -981,7 +979,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         for (CMasternode& mn : vMasternodes) {
             if (mn.addr.IsRFC1918()) continue; //local network
 
-            if (mn.IsEnabled()) {
+            if (mn.IsEnabled(true)) {
                 if (vin == CTxIn() || vin == mn.vin) {
                     LogPrint("masternode", "dseg - Sending Masternode entry to peer=%i ip=%s - %s \n", pfrom->GetId(), pfrom->addr.ToString().c_str(), mn.vin.prevout.hash.ToString());
 

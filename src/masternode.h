@@ -59,7 +59,7 @@ public:
         READWRITE(vchSig);
     }
 
-    bool CheckAndUpdate(int& nDos, bool fRequireEnabled = true, bool fCheckSigTimeOnly = false);
+    bool CheckAndUpdate(int& nDos, bool fRequireEnabled = true, bool fCheckSigTimeOnly = false, bool fSkipCheckPingTimeAndRelay = false);
     bool Sign(CKey& keyMasternode, CPubKey& pubKeyMasternode);
     bool VerifySignature(CPubKey& pubKeyMasternode, int &nDos);
     void Relay();
@@ -113,7 +113,7 @@ private:
 
 public:
     enum state {
-        MASTERNODE_PRE_ENABLED,
+        MASTERNODE_ACTIVE,
         MASTERNODE_ENABLED,
         MASTERNODE_EXPIRED,
         MASTERNODE_OUTPOINT_SPENT,
@@ -262,9 +262,9 @@ public:
         lastPing = CMasternodePing();
     }
 
-    bool IsEnabled() const
+    bool IsEnabled(bool withActive = true) const
     {
-        return activeState == MASTERNODE_ENABLED;
+        return (activeState == MASTERNODE_ENABLED) || (withActive && activeState == MASTERNODE_ACTIVE);
     }
 
     int GetMasternodeInputAge()
@@ -286,10 +286,11 @@ public:
 
     std::string Status()
     {
-        std::string strStatus = "ACTIVE";
+        std::string strStatus = "UNKNOWN";
 
         switch(activeState)
         {
+            case CMasternode::MASTERNODE_ACTIVE:    strStatus = "ACTIVE";    break;
             case CMasternode::MASTERNODE_ENABLED:   strStatus = "ENABLED";   break;
             case CMasternode::MASTERNODE_EXPIRED:   strStatus = "EXPIRED";   break;
             case CMasternode::MASTERNODE_VIN_SPENT: strStatus = "VIN_SPENT"; break;
