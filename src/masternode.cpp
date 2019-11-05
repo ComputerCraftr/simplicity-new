@@ -691,7 +691,7 @@ bool CMasternodeBroadcast::CheckInputsAndAdd(int& nDoS)
             return false;
         }
 
-        if (!AcceptableInputs(mempool, state, CTransaction(tx), false, NULL)) {
+        if (!AcceptableInputs(mempool, state, CTransaction(tx), false, nullptr)) {
             //set nDos
             state.IsInvalid(nDoS);
             return false;
@@ -766,7 +766,6 @@ bool CMasternodeBroadcast::Sign(CKey& keyCollateralAddress)
 
     return true;
 }
-
 
 bool CMasternodeBroadcast::VerifySignature()
 {
