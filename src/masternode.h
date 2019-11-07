@@ -262,7 +262,7 @@ public:
         lastPing = CMasternodePing();
     }
 
-    bool IsEnabled(bool withActive = true) const
+    bool IsEnabled(bool withActive) const
     {
         return (activeState == MASTERNODE_ENABLED) || (withActive && activeState == MASTERNODE_ACTIVE);
     }

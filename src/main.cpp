@@ -5968,10 +5968,10 @@ bool static ProcessMessage(CNode* pfrom, std::string strCommand, CDataStream& vR
             return false;
 
         // Disconnect from old peers once we are at the upgrade block
-        if (pfrom->nVersion < 70023 && (chainActive.Height() + 1 >= Params().WALLET_UPGRADE_BLOCK() || Params().NetworkID() != CBaseChainParams::MAIN)) {
+        if (pfrom->nVersion < SENDHEADERS_VERSION && (chainActive.Height() + 1 >= Params().WALLET_UPGRADE_BLOCK() || Params().NetworkID() != CBaseChainParams::MAIN)) {
             LogPrintf("peer=%d using obsolete version %i; disconnecting\n", pfrom->id, pfrom->nVersion);
             pfrom->PushMessage("reject", strCommand, REJECT_OBSOLETE,
-                               strprintf("Version must be %d or greater", 70023));
+                               strprintf("Version must be %d or greater", SENDHEADERS_VERSION));
             pfrom->fDisconnect = true;
             return false;
         }

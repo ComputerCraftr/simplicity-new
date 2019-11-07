@@ -182,7 +182,6 @@ public:
     CScript payee;
     std::vector<unsigned char> vchSig;
     unsigned payeeLevel;
-    CTxIn payeeVin;
 
     CMasternodePaymentWinner()
     {
@@ -190,7 +189,6 @@ public:
         vinMasternode = CTxIn();
         payee = CScript();
         payeeLevel = CMasternode::LevelValue::UNSPECIFIED;
-        payeeVin = CTxIn();
     }
 
     CMasternodePaymentWinner(CTxIn vinIn)
@@ -199,7 +197,6 @@ public:
         vinMasternode = vinIn;
         payee = CScript();
         payeeLevel = CMasternode::LevelValue::UNSPECIFIED;
-        payeeVin = CTxIn();
     }
 
     uint256 GetHash() const
@@ -207,9 +204,8 @@ public:
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << payee;
         ss << nBlockHeight;
-        ss << vinMasternode.prevout;
+        ss << vinMasternode;
         ss << payeeLevel;
-        ss << payeeVin;
 
         return ss.GetHash();
     }
@@ -219,11 +215,11 @@ public:
     bool SignatureValid();
     void Relay();
 
-    void AddPayee(CScript payeeIn, unsigned payeeLevelIn, CTxIn payeeVinIn)
+    void AddPayee(CTxIn vinIn, CScript payeeIn, unsigned payeeLevelIn)
     {
+        vinMasternode = vinIn;
         payee = payeeIn;
         payeeLevel = payeeLevelIn;
-        payeeVin = payeeVinIn;
     }
 
     ADD_SERIALIZE_METHODS;
@@ -236,9 +232,8 @@ public:
         READWRITE(payee);
         READWRITE(vchSig);
 
-        // only for updated nodes
-        READWRITE(payeeLevel);
-        READWRITE(payeeVin);
+        if (nVersion >= SENDHEADERS_VERSION)
+            READWRITE(payeeLevel);
     }
 
     std::string ToString()
