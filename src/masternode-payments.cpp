@@ -447,7 +447,20 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
         ExtractDestination(winner.payee, address1);
         CBitcoinAddress payee_addr(address1);
 
-        CMasternode* winner_mn = mnodeman.Find(winner.vinMasternode);
+        CMasternode* winner_mn;
+
+        // If the payeeVin is empty the winner object came from an old version, so we use the old logic
+        if (winner.payeeVin == CTxIn()) {
+            winner_mn = mnodeman.Find(winner.payee);
+
+            if (winner_mn != NULL)
+            {
+                winner.payeeLevel = winner_mn->Level();
+                winner.payeeVin = winner_mn->vin;
+            }
+        } else {
+            winner_mn = mnodeman.Find(winner.payeeVin);
+        }
 
         if (!winner_mn) {
             LogPrint("mnpayments", "mnw - unknown payee from peer=%s ip=%s - %s\n", pfrom->GetId(), pfrom->addr.ToString().c_str(), payee_addr.ToString().c_str());
@@ -457,10 +470,13 @@ void CMasternodePayments::ProcessMessageMasternodePayments(CNode* pfrom, std::st
             // if (locked) Misbehaving(pfrom->GetId(), 2);
 
             // Try to find the missing masternode
-            mnodeman.AskForMN(pfrom, winner.vinMasternode);
+            // however DsegUpdate only asks once every 3h
+            if (winner.payeeVin == CTxIn())
+                mnodeman.DsegUpdate(pfrom);
+            else
+                mnodeman.AskForMN(pfrom, winner.payeeVin);
+
             return;
-        } else if (pfrom->nVersion < SENDHEADERS_VERSION) {
-            winner.payeeLevel = winner_mn->Level();
         }
 
         std::string logString = strprintf("mnw - peer=%s ip=%s v=%d addr=%s winHeight=%d vin=%s",
@@ -605,7 +621,7 @@ bool CMasternodePayments::AddWinningMasternode(CMasternodePaymentWinner& winnerI
         }
     }
 
-    mapMasternodeBlocks[winnerIn.nBlockHeight].AddPayee(winnerIn.payeeLevel, winnerIn.payee, winnerIn.vinMasternode, 1);
+    mapMasternodeBlocks[winnerIn.nBlockHeight].AddPayee(winnerIn.payeeLevel, winnerIn.payee, winnerIn.payeeVin, 1);
 
     return true;
 }
@@ -865,7 +881,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
             CScript payee = GetScriptForRawPubKey(pmn->pubKeyCollateralAddress);
 
             newWinner.nBlockHeight = nBlockHeight;
-            newWinner.AddPayee(pmn->vin, payee, mnlevel);
+            newWinner.AddPayee(payee, mnlevel, pmn->vin);
 
             CTxDestination address1;
             ExtractDestination(payee, address1);

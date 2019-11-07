@@ -1009,7 +1009,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
      */
 
     // Light version for OLD MASTERNODES - fake pings, no self-activation
-    else if (strCommand == "dsee" || strCommand == "dsee+") { //ObfuScation Election Entry
+    else if (strCommand == "dsee") { //ObfuScation Election Entry
 
         if (IsSporkActive(SPORK_10_MASTERNODE_PAY_UPDATED_NODES)) return;
 
@@ -1027,10 +1027,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         int donationPercentage;
         std::string strMessage;
 
-        if (strCommand == "dsee")
-            vRecv >> vin >> addr >> vchSig >> sigTime >> pubkey >> pubkey2 >> count >> current >> lastUpdated >> protocolVersion;
-        else
-            vRecv >> vin >> addr >> vchSig >> sigTime >> pubkey >> pubkey2 >> count >> current >> lastUpdated >> protocolVersion >> donationAddress >> donationPercentage;
+        vRecv >> vin >> addr >> vchSig >> sigTime >> pubkey >> pubkey2 >> count >> current >> lastUpdated >> protocolVersion >> donationAddress >> donationPercentage;
 
         // make sure signature isn't in the future (past is OK)
         if (sigTime > GetAdjustedTime() + 60 * 60) {
@@ -1042,10 +1039,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         std::string vchPubKey(pubkey.begin(), pubkey.end());
         std::string vchPubKey2(pubkey2.begin(), pubkey2.end());
 
-        if (strCommand == "dsee")
-            strMessage = addr.ToString() + std::to_string(sigTime) + vchPubKey + vchPubKey2 + std::to_string(protocolVersion);
-        else
-            strMessage = addr.ToString() + std::to_string(sigTime) + vchPubKey + vchPubKey2 + std::to_string(protocolVersion) + donationAddress.ToString() + std::to_string(donationPercentage);
+        strMessage = addr.ToString() + std::to_string(sigTime) + vchPubKey + vchPubKey2 + std::to_string(protocolVersion) + donationAddress.ToString() + std::to_string(donationPercentage);
 
         if (protocolVersion < masternodePayments.GetMinMasternodePaymentsProto()) {
             LogPrintf("CMasternodeMan::ProcessMessage() : dsee - ignoring outdated Masternode %s protocol version %d < %d\n", vin.prevout.hash.ToString(), protocolVersion, masternodePayments.GetMinMasternodePaymentsProto());
@@ -1063,9 +1057,9 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         }
 
         CScript addressScript2 = GetScriptForDestination(pubkey2.GetID());
-        //CScript pubkeyScript2 = GetScriptForRawPubKey(pubkey2); //uncompressed
+        CScript pubkeyScript2 = GetScriptForRawPubKey(pubkey2); //uncompressed
 
-        if (addressScript2.size() != 25 /*|| pubkeyScript2.size() != 67*/) {
+        if (addressScript2.size() != 25 || pubkeyScript2.size() != 67) {
             LogPrintf("CMasternodeMan::ProcessMessage() : dsee - pubkey2 the wrong size\n");
             Misbehaving(pfrom->GetId(), 100);
             return;
@@ -1092,22 +1086,19 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         }
 
         //search existing Masternode list, this is where we update existing Masternodes with new dsee broadcasts
-        CMasternode* pmn = Find(vin);
+        CMasternode* pmn = this->Find(vin);
         if (pmn != NULL) {
             // count == -1 when it's a new entry
             //   e.g. We don't want the entry relayed/time updated when we're syncing the list
             // mn.pubkey = pubkey, IsVinAssociatedWithPubkey is validated once below,
             //   after that they just need to match
             if (count == -1 && pmn->pubKeyCollateralAddress == pubkey && (GetAdjustedTime() - pmn->nLastDsee > MASTERNODE_MIN_MNB_SECONDS)) {
-                if (pmn->protocolVersion >= SENDHEADERS_VERSION && sigTime - pmn->lastPing.sigTime < MASTERNODE_MIN_MNB_SECONDS) return;
+                if (pmn->protocolVersion > GETHEADERS_VERSION && sigTime - pmn->lastPing.sigTime < MASTERNODE_MIN_MNB_SECONDS) return;
                 if (pmn->nLastDsee < sigTime) { //take the newest entry
                     LogPrint("masternode", "dsee - Got updated entry for %s\n", vin.prevout.hash.ToString());
-                    if (pmn->protocolVersion < SENDHEADERS_VERSION) {
+                    if (pmn->protocolVersion < GETHEADERS_VERSION) {
                         pmn->pubKeyMasternode = pubkey2;
                         pmn->sigTime = sigTime;
-                        CAmount deposit = 0 * COIN;
-                        if (CMasternode::IsDepositCoins(pmn->vin, deposit))
-                            pmn->deposit = deposit;
                         pmn->sig = vchSig;
                         pmn->protocolVersion = protocolVersion;
                         pmn->addr = addr;
@@ -1116,17 +1107,12 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                     }
                     pmn->nLastDsee = sigTime;
                     pmn->Check();
-                    if (pmn->IsEnabled(false)) {
+                    if (pmn->IsEnabled()) {
                         TRY_LOCK(cs_vNodes, lockNodes);
                         if (!lockNodes) return;
-                        for (CNode* pnode : vNodes) {
-                            if (pnode->nVersion >= masternodePayments.GetMinMasternodePaymentsProto()) {
-                                if (strCommand == "dsee")
-                                    pnode->PushMessage("dsee", vin, addr, vchSig, sigTime, pubkey, pubkey2, count, current, lastUpdated, protocolVersion);
-                                else
-                                    pnode->PushMessage("dsee+", vin, addr, vchSig, sigTime, pubkey, pubkey2, count, current, lastUpdated, protocolVersion, donationAddress, donationPercentage);
-                            }
-                        }
+                        for (CNode* pnode : vNodes)
+                            if (pnode->nVersion >= masternodePayments.GetMinMasternodePaymentsProto())
+                                pnode->PushMessage("dsee", vin, addr, vchSig, sigTime, pubkey, pubkey2, count, current, lastUpdated, protocolVersion, donationAddress, donationPercentage);
                     }
                 }
             }
@@ -1199,9 +1185,6 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
             mn.vin = vin;
             mn.pubKeyCollateralAddress = pubkey;
             mn.sig = vchSig;
-            CAmount deposit = 0 * COIN;
-            if (CMasternode::IsDepositCoins(mn.vin, deposit))
-                mn.deposit = deposit;
             mn.sigTime = sigTime;
             mn.pubKeyMasternode = pubkey2;
             mn.protocolVersion = protocolVersion;
@@ -1209,21 +1192,16 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
             mn.lastPing = CMasternodePing(vin);
             mn.Check(true);
             // add v11 masternodes, v12 should be added by mnb only
-            if (protocolVersion < SENDHEADERS_VERSION) {
+            if (protocolVersion < GETHEADERS_VERSION) {
                 LogPrint("masternode", "dsee - Accepted OLD Masternode entry %i %i\n", count, current);
                 Add(mn);
             }
-            if (mn.IsEnabled(false)) {
+            if (mn.IsEnabled()) {
                 TRY_LOCK(cs_vNodes, lockNodes);
                 if (!lockNodes) return;
-                for (CNode* pnode : vNodes) {
-                    if (pnode->nVersion >= masternodePayments.GetMinMasternodePaymentsProto()) {
-                        if (strCommand == "dsee")
-                            pnode->PushMessage("dsee", vin, addr, vchSig, sigTime, pubkey, pubkey2, count, current, lastUpdated, protocolVersion);
-                        else
-                            pnode->PushMessage("dsee+", vin, addr, vchSig, sigTime, pubkey, pubkey2, count, current, lastUpdated, protocolVersion, donationAddress, donationPercentage);
-                    }
-                }
+                for (CNode* pnode : vNodes)
+                    if (pnode->nVersion >= masternodePayments.GetMinMasternodePaymentsProto())
+                        pnode->PushMessage("dsee", vin, addr, vchSig, sigTime, pubkey, pubkey2, count, current, lastUpdated, protocolVersion, donationAddress, donationPercentage);
             }
         } else {
             LogPrint("masternode","dsee - Rejected Masternode entry %s\n", vin.prevout.hash.ToString());
@@ -1292,7 +1270,7 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
         }
 
         // see if we have this Masternode
-        CMasternode* pmn = Find(vin);
+        CMasternode* pmn = this->Find(vin);
         if (pmn != NULL && pmn->protocolVersion >= masternodePayments.GetMinMasternodePaymentsProto()) {
             // LogPrint("masternode","dseep - Found corresponding mn for vin: %s\n", vin.ToString().c_str());
             // take this only if it's newer
@@ -1307,10 +1285,10 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
                 }
 
                 // fake ping for v11 masternodes, ignore for v12
-                if (pmn->protocolVersion < SENDHEADERS_VERSION) pmn->lastPing = CMasternodePing(vin);
+                if (pmn->protocolVersion < GETHEADERS_VERSION) pmn->lastPing = CMasternodePing(vin);
                 pmn->nLastDseep = sigTime;
                 pmn->Check();
-                if (pmn->IsEnabled(false)) {
+                if (pmn->IsEnabled()) {
                     TRY_LOCK(cs_vNodes, lockNodes);
                     if (!lockNodes) return;
                     LogPrint("masternode", "dseep - relaying %s \n", vin.prevout.hash.ToString());
