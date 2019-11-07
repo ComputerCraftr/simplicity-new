@@ -236,9 +236,10 @@ public:
         READWRITE(payee);
         READWRITE(vchSig);
 
-        // only for updated nodes
-        READWRITE(payeeLevel);
-        READWRITE(payeeVin);
+        if (nVersion >= SENDHEADERS_VERSION) {
+            READWRITE(payeeLevel);
+            READWRITE(payeeVin);
+        }
     }
 
     std::string ToString()
