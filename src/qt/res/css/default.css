@@ -4,7 +4,7 @@
 /* transparent-purple: #e9e7ef (for inactive backgrounds)                               */
 /*                                                                                      */
 /* light-orange1:      #ff9900 (main orange for white backgrounds)                      */
-/* light-orange2:      #cc7a00 (sligtly darker for gradients)                           */
+/* light-blue2:        #00454d (sligtly darker for gradients)                           */
 /*                                                                                      */
 /* medium-blue1:       #00454d (on hover)                                               */
 /* medium-blue1:       #005c66 (main blue for dark backgrounds)                         */
@@ -491,7 +491,7 @@ min-height:10px;
 }
 
 QScrollBar::handle:vertical:pressed { /* Scroll Bar Slider - vertical */
-background:#cc7a00;
+background:#00454d;
 min-height:10px;
 }
 
@@ -501,7 +501,7 @@ min-width:10px;
 }
 
 QScrollBar::handle:horizontal:pressed { /* Scroll Bar Slider - horizontal */
-background:#cc7a00;
+background:#00454d;
 min-width:10px;
 }
 
@@ -570,14 +570,14 @@ border-radius: 4px;
 
 QSlider::sub-page:horizontal {
 /* background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #00454d, stop: 1 #7b67a9); */
-background-color: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #cc7a00, stop: 1 #ff9900);
+background-color: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #00454d, stop: 1 #ff9900);
 border: 1px solid #333;
 height: 10px;
 border-radius: 4px;
 }
 
 QSlider::add-page:horizontal {
-background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #005c66, stop: 1 #cc7a00);
+background: qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #005c66, stop: 1 #00454d);
 border: 1px solid #333;
 height: 10px;
 border-radius: 4px;
@@ -1713,7 +1713,7 @@ QWidget#GovernancePage .ProposalFrame {
 }
 
 QWidget#GovernancePage .ProposalFrame#proposalFrame {
-    background-color:qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #cc7a00, stop: 1 #ff9900);
+    background-color:qlineargradient(x1: 0, y1: 0, x2: 1, y2: 0, stop: 0 #00454d, stop: 1 #ff9900);
     border:1px solid #ff9900;
 }
 

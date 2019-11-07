@@ -66,26 +66,28 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                     sub.credit += out.nValue;
             }
             sub.debit -= wtx.vin[0].nSequence * COIN;
+            parts.append(sub);
         } else if (isminetype mine = wallet->IsMine(wtx.vout[1])) {
             // SPL stake reward
             sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
             sub.type = TransactionRecord::StakeMint;
             sub.address = CBitcoinAddress(address).ToString();
             sub.credit = nNet;
+            parts.append(sub);
         } else {
             //Masternode reward
             CTxDestination destMN;
-            int nIndexMN = wtx.vout.size() - 1;
-            if (ExtractDestination(wtx.vout[nIndexMN].scriptPubKey, destMN) && IsMine(*wallet, destMN)) {
-                isminetype mine = wallet->IsMine(wtx.vout[nIndexMN]);
-                sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
-                sub.type = TransactionRecord::MNReward;
-                sub.address = CBitcoinAddress(destMN).ToString();
-                sub.credit = wtx.vout[nIndexMN].nValue;
+            for (const CTxOut& txout : wtx.vout) {
+                if (ExtractDestination(txout.scriptPubKey, destMN) && IsMine(*wallet, destMN)) {
+                    isminetype mine = wallet->IsMine(txout);
+                    sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
+                    sub.type = TransactionRecord::MNReward;
+                    sub.address = CBitcoinAddress(destMN).ToString();
+                    sub.credit = txout.nValue;
+                    parts.append(sub);
+                }
             }
         }
-
-        parts.append(sub);
     } else if (wtx.HasZerocoinSpendInputs()) {
         //zerocoin spend outputs
         bool fFeeAssigned = false;
@@ -171,8 +173,13 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                     sub.address = mapValue["from"];
                 }
                 if (wtx.IsCoinBase()) {
-                    // Generated
-                    sub.type = TransactionRecord::Generated;
+                    if (txout == wtx.vout[0]) {
+                        // Generated
+                        sub.type = TransactionRecord::Generated;
+                    } else {
+                        //Masternode reward
+                        sub.type = TransactionRecord::MNReward;
+                    }
                 }
 
                 parts.append(sub);
