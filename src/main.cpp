@@ -3095,11 +3095,11 @@ bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pin
         }
 
         if ((end == 10 && typeCount[POS] == 0) /*|| (pindex->pprev && CBlockHeader::GetAlgo(pindex->nVersion) == CBlockHeader::GetAlgo(pindex->pprev->nVersion))*/)
-            return state.DoS(100, error("%s : too many blocks of the same type in a row", __func__),
+            return state.DoS(100, error("%s : too many PoW blocks in a row, at least one PoS block required", __func__),
                 REJECT_INVALID, "same-type");
         for (int i = POW_QUARK; i < ALGO_COUNT; i++) {
             if (typeCount[i] > 4)
-                return state.DoS(100, error("%s : too many blocks of the same type in a row", __func__),
+                return state.DoS(100, error("%s : too many blocks of type=%i in a row, %i", __func__, i, typeCount[i]),
                     REJECT_INVALID, "same-type");
         }
     }
