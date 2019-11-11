@@ -1059,7 +1059,7 @@ bool GetCoinAge(const CTransaction& tx, const unsigned int nTxTime, int nBestHei
             return false; // Transaction timestamp violation
         }
 
-        if (!Params().HasStakeMinAgeOrDepth(nBestHeight, nTxTime, nBlockFromHeight, prevblock.nTime))
+        if (!Params().HasStakeMinAgeOrDepth(nBestHeight, nTxTime, nBlockFromHeight, prevblock.nTime) || prevblock.nTime + nStakeMinAge > nTxTime)
             continue; // only count coins meeting min age requirement
 
         unsigned int nTimeDiff = nTxTime - (nBestHeight >= Params().WALLET_UPGRADE_BLOCK() ? prevblock.nTime : txPrev.nTime); // switch to prevblock.nTime after upgrade
@@ -4474,8 +4474,7 @@ bool CheckBlock(const CBlock& block, CValidationState& state, bool fCheckPOW, bo
                         REJECT_INVALID, "bad-cb-payee");
             }
         } else {
-            if (fDebug)
-                LogPrintf("%s: Masternode payment check skipped on sync - skipping IsBlockPayeeValid()\n", __func__);
+            LogPrint("net", "%s: Masternode payment check skipped on sync - skipping IsBlockPayeeValid()\n", __func__);
         }
     }
 

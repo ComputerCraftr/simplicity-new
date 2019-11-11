@@ -209,7 +209,7 @@ public:
         ss << nBlockHeight;
         ss << vinMasternode.prevout;
         ss << payeeLevel;
-        ss << payeeVin;
+        ss << payeeVin.prevout;
 
         return ss.GetHash();
     }
@@ -236,10 +236,11 @@ public:
         READWRITE(payee);
         READWRITE(vchSig);
 
-        if (nVersion >= SENDHEADERS_VERSION) {
+        // only for updated nodes
+        //if (nVersion >= SENDHEADERS_VERSION) {
             READWRITE(payeeLevel);
             READWRITE(payeeVin);
-        }
+        //}
     }
 
     std::string ToString()
