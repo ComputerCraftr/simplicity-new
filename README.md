@@ -3,57 +3,37 @@ Simplicity integration/staging repository
 
 [![Build Status](https://travis-ci.org/Simplicity-Project/Simplicity.svg?branch=master)](https://travis-ci.org/Simplicity-Project/Simplicity) [![GitHub version](https://badge.fury.io/gh/Simplicity-Project%2FSimplicity.svg)](https://badge.fury.io/gh/Simplicity-Project%2FSimplicity)
 
-Simplicity is an open source crypto-currency focused on fast private transactions using the Zerocoin protocol, with low transaction fees & environmental footprint.  It utilizes the first ever anonymous proof of stake protocol, called zPoS, combined with regular PoS and masternodes for securing its network. zPoS incentivises using the privacy features available in Simplicity by granting a higher block reward for zPoS over regular PoS and masternodes. In practice Simplicity has between 4 to 10 times higher use of it's privacy features in comparison to other coins that combine public and private transactions. This is thanks to innovations like zPoS and integrating the Zerocoin protocol into light/mobile wallets, allowing for a complete and lightweight privacy protocol that can be used on the go. As well as security improvements like [deterministic generation of zSPL for easy backups.](https://www.reddit.com/r/simplicity/comments/8gbjf7/how_to_use_deterministic_zerocoin_generation/)
-The goal of Simplicity is to achieve a decentralized sustainable crypto currency with near instant full-time private transactions, fair governance and community intelligence.
-- Anonymized transactions & consensus using the [_Zerocoin Protocol_](http://www.simplicity.org/zspl) and [zPoS](https://simplicity.org/zpos/).
-- light/mobile wallet privacy using the [Zerocoin Light Node Protocol](https://simplicity.org/wp-content/uploads/2018/11/Zerocoin_Light_Node_Protocol.pdf)
+Simplicity is an open source crypto-currency focused on fast transactions, with low transaction fees & environmental footprint. It utilizes multi algo PoW, PoS, and several masternode tiers for securing its network. The goal of Simplicity is to achieve a decentralized sustainable crypto currency with near instant transactions, fair governance and community intelligence.
 - Fast transactions featuring guaranteed zero confirmation transactions, we call it _SwiftX_.
 - Decentralized blockchain voting utilizing Masternode technology to form a DAO. The blockchain will distribute monthly treasury funds based on successful proposals submitted by the community and voted on by the DAO.
 
-More information at [simplicity.org](http://www.simplicity.org) Visit our ANN thread at [BitcoinTalk](http://www.bitcointalk.org/index.php?topic=1262920)
+More information at [simplicity-coin.com](https://simplicity-coin.com/) Visit our ANN thread at [BitcoinTalk](http://www.bitcointalk.org/)
 
 ### Coin Specs
 <table>
-<tr><td>Algo</td><td>Quark</td></tr>
-<tr><td>Block Time</td><td>60 Seconds</td></tr>
+<tr><td>Mining Algos</td><td>Quark and Scrypt^2</td></tr>
+<tr><td>Block Time</td><td>80 Seconds</td></tr>
 <tr><td>Difficulty Retargeting</td><td>Every Block</td></tr>
-<tr><td>Max Coin Supply (PoW Phase)</td><td>43,199,500 SPL</td></tr>
-<tr><td>Max Coin Supply (PoS Phase)</td><td>Infinite</td></tr>
-<tr><td>Premine</td><td>60,000 SPL*</td></tr>
-</table>
-
-*60,000 SPL Premine was burned in block [279917](http://www.presstab.pw/phpexplorer/Simplicity/block.php?blockhash=206d9cfe859798a0b0898ab00d7300be94de0f5469bb446cecb41c3e173a57e0)
-
-### Reward Distribution
-
-<table>
-<th colspan=4>Genesis Block</th>
-<tr><th>Block Height</th><th>Reward Amount</th><th>Notes</th></tr>
-<tr><td>1</td><td>60,000 SPL</td><td>Initial Pre-mine, burnt in block <a href="http://www.presstab.pw/phpexplorer/Simplicity/block.php?blockhash=206d9cfe859798a0b0898ab00d7300be94de0f5469bb446cecb41c3e173a57e0">279917</a></td></tr>
+<tr><td>Max Coin Supply</td><td>7,000,000,000 SPL</td></tr>
 </table>
 
 ### PoW Rewards Breakdown
 
 <table>
-<th>Block Height</th><th>Masternodes</th><th>Miner</th><th>Budget</th>
-<tr><td>2-43200</td><td>20% (50 SPL)</td><td>80% (200 SPL)</td><td>N/A</td></tr>
-<tr><td>43201-151200</td><td>20% (50 SPL)</td><td>70% (200 SPL)</td><td>10% (25 SPL)</td></tr>
-<tr><td>151201-259200</td><td>45% (22.5 SPL)</td><td>45% (22.5 SPL)</td><td>10% (5 SPL)</td></tr>
+<th>Block Height</th><th>Reward</th><th>Masternodes</th><th>Miners</th><th>Budget</th>
+<tr><td>1-200</td><td>15000000</td><td>66.7%</td><td>33.3%</td><td>N/A</td></tr>
+<tr><td>201-400</td><td>0</td><td>66.7%</td><td>33.3%</td><td>N/A</td></tr>
+<tr><td>401-2000</td><td>500</td><td>66.7%</td><td>33.3%</td><td>N/A</td></tr
+<tr><td>2001-1029999</td><td>100</td><td>66.7%</td><td>33.3%</td><td>N/A</td></tr>
+<tr><td>1030000-1300000</td><td>10000</td><td>66.7%</td><td>23.3%</td><td>10%</td></tr>
+<tr><td>1300000-∞</td><td>1000</td><td>tier 3 - 19.5% / tier 2 - 13% / tier 1 - 6.5%</td><td>51%</td><td>10%</td></tr>
 </table>
 
 ### PoS Rewards Breakdown
 
 <table>
-<th>Phase</th><th>Block Height</th><th>Reward</th><th>Masternodes & Stakers</th><th>Budget</th>
-<tr><td>Phase 0</td><td>259201-302399</td><td>50 SPL</td><td>90% (45 SPL)</td><td>10% (5 SPL)</td></tr>
-<tr><td>Phase 1</td><td>302400-345599</td><td>45 SPL</td><td>90% (40.5 SPL)</td><td>10% (4.5 SPL)</td></tr>
-<tr><td>Phase 2</td><td>345600-388799</td><td>40 SPL</td><td>90% (36 SPL)</td><td>10% (4 SPL)</td></tr>
-<tr><td>Phase 3</td><td>388800-431999</td><td>35 SPL</td><td>90% (31.5 SPL)</td><td>10% (3.5 SPL)</td></tr>
-<tr><td>Phase 4</td><td>432000-475199</td><td>30 SPL</td><td>90% (27 SPL)</td><td>10% (3 SPL)</td></tr>
-<tr><td>Phase 5</td><td>475200-518399</td><td>25 SPL</td><td>90% (22.5 SPL)</td><td>10% (2.5 SPL)</td></tr>
-<tr><td>Phase 6</td><td>518400-561599</td><td>20 SPL</td><td>90% (18 SPL)</td><td>10% (2 SPL)</td></tr>
-<tr><td>Phase 7</td><td>561600-604799</td><td>15 SPL</td><td>90% (13.5 SPL)</td><td>10% (1.5 SPL)</td></tr>
-<tr><td>Phase 8</td><td>604800-647999</td><td>10 SPL</td><td>90% (9 SPL)</td><td>10% (1 SPL)</td></tr>
-<tr><td>Phase 9</td><td>648000-1154203</td><td>5 SPL</td><td>90% (4.5 SPL)</td><td>10% (0.5 SPL)</td></tr>
-<tr><td>Phase X</td><td>1154203-∞</td><td>6 SPL</td><td>84% (5 SPL/zSPL)</td><td>16% (1 SPL)</td></tr>
+<th>Block Height</th><th>Reward</th><th>Masternodes</th><th>Stakers</th><th>Budget</th>
+<tr><td>0-1029999</td><td>22.38% annual interest</td><td>66.7%</td><td>33.3%</td><td>N/A</td></tr>
+<tr><td>1030000-1300000</td><td>10% annual interest</td><td>66.7%</td><td>23.3%</td><td>10%</td></tr>
+<tr><td>1300000-∞</td><td>10% annual interest</td><td>tier 3 - 39% / tier 2 - 26% / tier 1 - 13%</td><td>12%</td><td>10%</td></tr>
 </table>
