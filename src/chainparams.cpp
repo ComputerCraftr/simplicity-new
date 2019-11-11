@@ -154,7 +154,7 @@ public:
         pchMessageStart[1] = 0x07;
         pchMessageStart[2] = 0x9a;
         pchMessageStart[3] = 0x1e;
-        vAlertPubKey = ParseHex("03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1");
+        vAlertPubKey = ParseHex("03a728481601bb6f2e1873624fe15df816b0633b4c499406843c666800fbe45d5a");
         nDefaultPort = 11957;
         bnProofOfWorkLimit[POS] = ~uint256(0) >> 20;
         bnProofOfWorkLimit[POW_QUARK] = ~uint256(0) >> 16;
@@ -174,7 +174,7 @@ public:
         nMaxMoneyOut = 7000000000 * COIN; // 7 billion
 
         /** Height or Time Based Activations **/
-        nMandatoryUpgradeBlock = 1000000;
+        nMandatoryUpgradeBlock = 1030000;
         nUpgradeBlockVersion = 8; //Block headers must be this version after upgrade block
         nModifierUpdateBlock = 0;
         nZerocoinStartHeight = 2100000000;
@@ -195,9 +195,9 @@ public:
         nStartTreasuryBlock = nMandatoryUpgradeBlock;
         nTreasuryBlockStep = 1 * 24 * 60 * 60 / nTargetSpacing; // Once per day
         nMasternodeTiersStartHeight = 2100000000;
-        vDevFundPubKey1 = CPubKey(ParseHex("03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1"));
-        vDevFundPubKey2 = CPubKey(ParseHex("03b9dc2f0d817abf63e488b6b1780de1f6226280fc9961e2ab4c3b1e943377ad00"));
-        vCommunityFundWallet = "R4VpCXiZJHFRgviU7qs6VFiQBpqg8dqmSs";
+        vDevFundPubKey1 = CPubKey(ParseHex("03a728481601bb6f2e1873624fe15df816b0633b4c499406843c666800fbe45d5a"));
+        vDevFundPubKey2 = CPubKey(ParseHex("0254121b1cbfcb42e0d53410f0db9c1c51fc79a0a376dd3e0d3c7431915f9fed44"));
+        vCommunityFundWallet = "QwvSVBtpEWYcJohvLjaNgF2uKh4twzFNMy";
         assert(vDevFundPubKey1.IsFullyValid());
         assert(vDevFundPubKey2.IsFullyValid());
         //vBurnAddresses.emplace_back("");
@@ -255,8 +255,8 @@ public:
 
         nPoolMaxTransactions = 3;
         nBudgetCycleBlocks = 30 * 24 * 60 * 60 / nTargetSpacing; //!< Amount of blocks in a months period of time (using 1 minutes per) = (60*24*30)
-        strSporkKey = "03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1";
-        strSporkKeyOld = "03246ea9a9175f547c9db8be99dd1338f41043b816e4aeb6245ad8630cafc320a1";
+        strSporkKey = "03fdfa718ec40be6ce1b5fadf36022a4f0ff2f1efc872291ffbe42af127bdd2859";
+        strSporkKeyOld = "03fdfa718ec40be6ce1b5fadf36022a4f0ff2f1efc872291ffbe42af127bdd2859";
         strObfuscationPoolDummyAddress = "D87q2gC9j6nNrnzCsg4aY6bHMLsT9nUhEw";
         nStartMasternodePayments = 1403728576; //Wed, 25 Jun 2014 20:36:16 GMT
 
