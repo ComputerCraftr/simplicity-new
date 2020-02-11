@@ -171,7 +171,7 @@ public:
     uint256 nStakeModifierV2;
 
     //! block header
-    int nVersion;
+    unsigned int nVersion;
     uint256 hashMerkleRoot;
     unsigned int nTime;
     unsigned int nBits;
@@ -281,7 +281,7 @@ public:
         block.nBits = nBits;
         block.nNonce = nNonce;
         //block.nAccumulatorCheckpoint = nAccumulatorCheckpoint;
-        if (nVersion < 8)
+        if (nVersion < Params().WALLET_UPGRADE_VERSION())
             block.fPreForkPoS = IsProofOfStake();
         return block;
     }
@@ -395,7 +395,7 @@ public:
      * in the last Params().ToCheckBlockUpgradeMajority() blocks, starting at pstart
      * and going backwards.
      */
-    static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned int nRequired);
+    static bool IsSuperMajority(unsigned int minVersion, const CBlockIndex* pstart, unsigned int nRequired);
 
     std::string ToString() const
     {

@@ -217,7 +217,7 @@ bool CActiveMasternode::SendMasternodePing(std::string& errorMessage)
             return false;
         }
 
-        LogPrint("masternode", "dseep - relaying from active mn, %s \n", vin.ToString().c_str());
+        LogPrint("masternode", "dseep - relaying from active mn, %s\n", vin.ToString().c_str());
         LOCK(cs_vNodes);
         for (CNode* pnode : vNodes)
             pnode->PushMessage("dseep", vin, vchMasterNodeSignature, masterNodeSignatureTime, false);
@@ -314,13 +314,11 @@ bool CActiveMasternode::CreateBroadcast(CTxIn vin, CService service, CKey keyCol
     std::string retErrorMessage;
     std::vector<unsigned char> vchMasterNodeSignature;
     int64_t masterNodeSignatureTime = GetAdjustedTime();
-    std::string donationAddress = "";
-    int donationPercantage = 0;
 
     std::string vchPubKey(pubKeyCollateralAddress.begin(), pubKeyCollateralAddress.end());
     std::string vchPubKey2(pubKeyMasternode.begin(), pubKeyMasternode.end());
 
-    std::string strMessage = service.ToString() + std::to_string(masterNodeSignatureTime) + vchPubKey + vchPubKey2 + std::to_string(PROTOCOL_VERSION) + donationAddress + std::to_string(donationPercantage);
+    std::string strMessage = service.ToString() + std::to_string(masterNodeSignatureTime) + vchPubKey + vchPubKey2 + std::to_string(PROTOCOL_VERSION);
 
     if (!obfuScationSigner.SignMessage(strMessage, retErrorMessage, vchMasterNodeSignature, keyCollateralAddress)) {
         errorMessage = "dsee sign message failed: " + retErrorMessage;
@@ -336,7 +334,7 @@ bool CActiveMasternode::CreateBroadcast(CTxIn vin, CService service, CKey keyCol
 
     LOCK(cs_vNodes);
     for (CNode* pnode : vNodes)
-        pnode->PushMessage("dsee", vin, service, vchMasterNodeSignature, masterNodeSignatureTime, pubKeyCollateralAddress, pubKeyMasternode, -1, -1, masterNodeSignatureTime, PROTOCOL_VERSION, donationAddress, donationPercantage);
+        pnode->PushMessage("dsee", vin, service, vchMasterNodeSignature, masterNodeSignatureTime, pubKeyCollateralAddress, pubKeyMasternode, -1, -1, masterNodeSignatureTime, PROTOCOL_VERSION);
 
     /*
      * END OF "REMOVE"
@@ -475,9 +473,17 @@ std::vector<COutput> CActiveMasternode::SelectCoinsMasternode()
     }
 
     // Filter
-    for (const COutput& out : vCoins) {
-        if (CMasternode::IsDepositCoins(out.tx->vout[out.i].nValue)) {
-            filteredCoins.push_back(out);
+    if (IsSporkActive(SPORK_18_NEW_MASTERNODE_TIERS)) {
+        for (const COutput& out : vCoins) {
+            if (CMasternode::IsDepositCoins(out.tx->vout[out.i].nValue)) {
+                filteredCoins.push_back(out);
+            }
+        }
+    } else {
+        for (const COutput& out : vCoins) {
+            if (CMasternode::Level(out.tx->vout[out.i].nValue, chainActive.Height()) == 3u) {
+                filteredCoins.push_back(out);
+            }
         }
     }
     return filteredCoins;
